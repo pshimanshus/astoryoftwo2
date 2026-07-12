@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mixtape — The Listening Room (prototype)</title>
+<style>
+/* ============================================================
+   PROTOTYPE — "The Listening Room"
+   The whole app is a hi-fi console under lamp light. You write
+   on the tape itself, dig eras out of a record crate, keep a
+   paper track sheet, and print the cover.
+   ============================================================ */
+
+@font-face { font-family: "Caveat"; font-weight: 700; src: url("fonts/caveat-700-1.woff2") format("woff2"); }
+@font-face { font-family: "Archivo Black"; font-weight: 400; src: url("fonts/archivo-black-1.woff2") format("woff2"); }
+@font-face { font-family: "Yatra One"; font-weight: 400; src: url("fonts/yatra-one-1.woff2") format("woff2"); }
+@font-face { font-family: "Jost"; font-weight: 700; src: url("fonts/jost-700-1.woff2") format("woff2"); }
+@font-face { font-family: "Special Elite"; font-weight: 400; src: url("fonts/special-elite-1.woff2") format("woff2"); }
+@font-face { font-family: "Permanent Marker"; font-weight: 400; src: url("fonts/permanent-marker-1.woff2") format("woff2"); }
+@font-face { font-family: "Courier Prime"; font-weight: 400; src: url("fonts/courier-prime-1.woff2") format("woff2"); }
+@font-face { font-family: "Courier Prime"; font-weight: 700; src: url("fonts/courier-prime-2.woff2") format("woff2"); }
+
+:root {
+  --wood-1: #2b1a10;
+  --wood-2: #382217;
+  --wood-3: #1d1109;
+  --brass: #d9b36a;
+  --brass-dim: #8a6f42;
+  --amber: #ffb84d;
+  --paper: #f2e8d2;
+  --paper-2: #e7dabd;
+  --ink: #2e241a;
+  --ink-soft: #6b5b45;
+  --red: #c2402f;
+  --led: #ffb84d;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+
+body {
+  min-height: 100vh;
+  color: var(--paper);
+  font-family: "Jost", sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 34px 18px 60px;
+  overflow-x: hidden;
+
+  /* walnut desk: planks + grain + lamp pool + vignette */
+  background-color: var(--wood-1);
+  background-image:
+    radial-gradient(ellipse 90% 55% at 50% -6%, rgba(255,184,77,0.20), transparent 60%),
+    radial-gradient(ellipse 130% 100% at 50% 115%, rgba(0,0,0,0.55), transparent 55%),
+    repeating-linear-gradient(90deg,
+      transparent 0 218px, rgba(0,0,0,0.28) 218px 221px),
+    repeating-linear-gradient(0deg,
+      rgba(255,214,150,0.025) 0 2px, transparent 2px 5px),
+    linear-gradient(180deg, var(--wood-2), var(--wood-1) 55%, var(--wood-3));
+}
+
+/* film grain over the whole room */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.55;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------- brass plaque ---------- */
+.plaque {
+  text-align: center;
+  padding: 14px 38px 12px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #58452a, #3a2d18 45%, #2c2110);
+  box-shadow:
+    inset 0 1px 0 rgba(255,222,160,0.45),
+    inset 0 -2px 4px rgba(0,0,0,0.6),
+    0 8px 22px rgba(0,0,0,0.55);
+  border: 1px solid #6b573366;
+}
+
+.plaque h1 {
+  margin: 0;
+  font-size: 30px;
+  letter-spacing: 0.42em;
+  text-indent: 0.42em;
+  color: var(--brass);
+  font-weight: 700;
+  text-shadow: 0 -1px 0 rgba(0,0,0,0.8), 0 1px 1px rgba(255,230,170,0.25);
+}
+
+.plaque p {
+  margin: 3px 0 0;
+  font-size: 12px;
+  letter-spacing: 0.34em;
+  text-indent: 0.34em;
+  color: var(--brass-dim);
+  text-transform: uppercase;
+}
+
+/* ---------- deck transport (step nav) ---------- */
+.deck {
+  display: flex;
+  gap: 8px;
+  margin: 26px 0 34px;
+  padding: 8px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #241812, #17100a);
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.8), 0 6px 16px rgba(0,0,0,0.5),
+              inset 0 -1px 0 rgba(255,214,150,0.07);
+}
+
+.deck button {
+  appearance: none;
+  font-family: "Jost", sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 22px;
+  border-radius: 8px;
+  border: 1px solid #00000088;
+  background: linear-gradient(180deg, #3a2c1e, #241812);
+  box-shadow: inset 0 1px 0 rgba(255,222,160,0.14), 0 2px 5px rgba(0,0,0,0.5);
+  color: #cbb289;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  cursor: pointer;
+  transition: transform 0.08s ease, box-shadow 0.15s ease;
+}
+
+.deck button:active { transform: translateY(1px); box-shadow: inset 0 2px 6px rgba(0,0,0,0.6); }
+
+.deck .led {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4a3a26;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.8);
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.deck button.is-active { color: var(--amber); }
+.deck button.is-active .led {
+  background: var(--led);
+  box-shadow: 0 0 10px 2px rgba(255,184,77,0.75), inset 0 0 2px rgba(255,255,255,0.6);
+}
+
+.deck .num { color: #8a6f42; font-size: 11px; }
+
+/* ---------- scenes ---------- */
+.scene { display: none; width: 100%; max-width: 780px; flex-direction: column; align-items: center; }
+.scene.is-on { display: flex; }
+
+.scene-hint {
+  margin: 0 0 24px;
+  font-size: 13px;
+  letter-spacing: 0.26em;
+  text-indent: 0.26em;
+  text-transform: uppercase;
+  color: #a58a5c;
+  text-align: center;
+}
+
+/* ============================================================
+   SCENE 1 — the cassette you write on
+   ============================================================ */
+
+.cassette {
+  position: relative;
+  width: min(600px, 92vw);
+  aspect-ratio: 1.575;
+  border-radius: 16px;
+  background: linear-gradient(180deg, var(--shell-light, #fdfdfa), var(--shell-base, #ece9e2) 24%, var(--shell-dark, #b3aea1));
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,0.5),
+    inset 0 -3px 6px rgba(0,0,0,0.35),
+    0 24px 50px rgba(0,0,0,0.6),
+    0 6px 14px rgba(0,0,0,0.45);
+  transform: rotate(-0.5deg);
+}
+
+.screw {
+  position: absolute;
+  width: 17px; height: 17px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #cfc7b4, #5d5546 65%, #2e2a20);
+  box-shadow: inset 0 -1px 2px rgba(0,0,0,0.7);
+}
+.screw::after {
+  content: "";
+  position: absolute; inset: 4px;
+  background:
+    linear-gradient(45deg, transparent 44%, rgba(20,16,10,0.9) 46% 54%, transparent 56%),
+    linear-gradient(-45deg, transparent 44%, rgba(20,16,10,0.9) 46% 54%, transparent 56%);
+  border-radius: 50%;
+}
+.screw.tl { top: 12px; left: 12px; } .screw.tr { top: 12px; right: 12px; }
+.screw.bl { bottom: 12px; left: 12px; } .screw.br { bottom: 12px; right: 12px; }
+
+.label {
+  position: absolute;
+  left: 7%; right: 7%; top: 8.5%;
+  height: 57%;
+  border-radius: 8px;
+  background: var(--label-bg, #f4f2ec);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(46,36,26,0.18);
+  overflow: hidden;
+  color: var(--label-ink, #2e241a);
+}
+
+.label .band {
+  height: 26px;
+  background: var(--band, linear-gradient(90deg, #37b6d9, #7f6dc9, #e668a4));
+  clip-path: polygon(0 0, 100% 0, 100% 68%, 0 100%);
+}
+
+.label .write-row {
+  display: flex;
+  justify-content: center;
+  padding: 8px 26px 0;
+}
+
+.label input {
+  font-family: "Caveat", cursive;
+  font-weight: 700;
+  background: transparent;
+  border: none;
+  border-bottom: 2px dotted rgba(46,36,26,0.35);
+  color: inherit;
+  outline: none;
+  text-align: center;
+  transition: border-color 0.15s ease;
+}
+.label input:focus { border-bottom-color: var(--red); }
+.label input::placeholder { color: rgba(46,36,26,0.35); }
+
+.label .title-input { font-size: clamp(22px, 4.6vw, 32px); width: 100%; }
+
+.label .duo { display: flex; gap: 14px; align-items: baseline; padding: 6px 26px 0; justify-content: center; }
+.label .duo span { font-family: "Jost"; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(46,36,26,0.55); }
+.label .duo input { font-size: clamp(15px, 2.6vw, 20px); width: 34%; }
+
+.side-badge {
+  position: absolute;
+  left: 16px; bottom: 12px;
+  background: var(--badge-bg, #241f3a);
+  color: var(--badge-fg, #f4f2ec);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-indent: 0.2em;
+  padding: 5px 12px;
+  border-radius: 5px;
+}
+
+.type-line {
+  position: absolute;
+  right: 14px; bottom: 14px;
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  color: rgba(46,36,26,0.5);
+}
+
+/* tape window with spinning reels */
+.window {
+  position: absolute;
+  left: 27%; right: 27%; top: 41.5%;
+  height: 24.5%;
+  border-radius: 12px;
+  background: #15100c;
+  box-shadow: inset 0 3px 9px rgba(0,0,0,0.9), 0 0 0 2px rgba(255,255,255,0.22);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 9%;
+  overflow: hidden;
+}
+
+.window::after { /* glass reflection */
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(112deg, rgba(255,255,255,0.10) 0 26%, transparent 27%);
+  pointer-events: none;
+}
+
+.reel { position: relative; width: 88px; height: 88px; flex: none; }
+.reel .tape {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  background:
+    repeating-radial-gradient(circle at 50% 50%, #221710 0 3px, #2a1d13 3px 4px);
+  box-shadow: inset 0 0 6px rgba(0,0,0,0.8);
+}
+.reel.small { transform: scale(0.74); }
+.reel .hub {
+  position: absolute; inset: 24px;
+  border-radius: 50%;
+  background: #f0e9d8;
+  box-shadow: inset 0 0 0 4px #c7bda5;
+  animation: spin 3.2s linear infinite;
+}
+.reel.small .hub { animation-duration: 2.1s; }
+.reel .hub::before {
+  content: "";
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(0deg,   transparent 44%, #7a715c 46% 54%, transparent 56%),
+    linear-gradient(60deg,  transparent 44%, #7a715c 46% 54%, transparent 56%),
+    linear-gradient(120deg, transparent 44%, #7a715c 46% 54%, transparent 56%);
+  border-radius: 50%;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .reel .hub { animation: none; } }
+
+.tape-run {
+  position: absolute;
+  left: 12%; right: 12%;
+  bottom: 12%;
+  height: 4px;
+  background: #1b120c;
+  transform: rotate(-1.6deg);
+}
+
+.plate {
+  position: absolute;
+  left: 32%; right: 32%; bottom: 2.5%;
+  height: 11%;
+  background: rgba(0,0,0,0.28);
+  clip-path: polygon(8% 0, 92% 0, 100% 100%, 0 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 14%;
+}
+.plate i {
+  width: 13px; height: 13px;
+  border-radius: 50%;
+  background: #15100c;
+  box-shadow: inset 0 2px 3px rgba(0,0,0,0.9);
+}
+.plate i:nth-child(2) { width: 9px; height: 9px; }
+
+/* ---------- the record crate (era picker) ---------- */
+.crate {
+  margin-top: 42px;
+  width: min(640px, 94vw);
+  padding: 18px 18px 0;
+  border-radius: 6px 6px 12px 12px;
+  background: linear-gradient(180deg, #4a2f1c, #331f11);
+  box-shadow:
+    inset 0 -14px 26px rgba(0,0,0,0.55),
+    inset 0 2px 0 rgba(255,214,150,0.12),
+    0 14px 30px rgba(0,0,0,0.5);
+  border: 2px solid #241509;
+  position: relative;
+}
+
+.crate::before {
+  content: "THE ERA CRATE — DIG ONE OUT";
+  position: absolute;
+  top: -11px; left: 50%;
+  transform: translateX(-50%) rotate(-0.8deg);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Special Elite", monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  padding: 3px 12px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.5);
+}
+
+.crate__row {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  align-items: flex-end;
+  padding-bottom: 24px;
+}
+
+.sleeve {
+  appearance: none;
+  border: none;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.18s cubic-bezier(0.34, 1.4, 0.64, 1);
+  transform: translateY(8px) rotate(var(--lean, 0deg));
+}
+.sleeve:nth-child(1) { --lean: -2.4deg; }
+.sleeve:nth-child(2) { --lean: 1.2deg; }
+.sleeve:nth-child(3) { --lean: -1deg; }
+.sleeve:nth-child(4) { --lean: 2.2deg; }
+
+.sleeve:hover { transform: translateY(2px) rotate(var(--lean)); }
+.sleeve.is-selected { transform: translateY(-14px) rotate(0deg); z-index: 2; }
+
+.sleeve canvas {
+  display: block;
+  width: 128px;
+  height: 128px;
+  background: #777;
+  border: 5px solid #efe6cf;
+  border-bottom-width: 24px;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.55);
+}
+
+.sleeve figcaption,
+.sleeve .tab {
+  position: absolute;
+  bottom: 3px; left: 5px; right: 5px;
+  font-family: "Special Elite", monospace;
+  font-size: 10.5px;
+  color: #4a3a26;
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+
+.sleeve.is-selected canvas { box-shadow: 0 18px 30px rgba(0,0,0,0.65), 0 0 0 2px var(--amber); }
+
+/* ============================================================
+   SCENE 2 — the track sheet
+   ============================================================ */
+
+.sheet {
+  width: min(620px, 94vw);
+  background:
+    repeating-linear-gradient(0deg, transparent 0 35px, rgba(120, 90, 60, 0.25) 35px 36px),
+    linear-gradient(180deg, #f5ecd4, #ecdfc0);
+  border-radius: 4px;
+  box-shadow: 0 22px 46px rgba(0,0,0,0.6), 0 4px 10px rgba(0,0,0,0.4);
+  transform: rotate(0.5deg);
+  padding: 26px 34px 30px;
+  color: var(--ink);
+  position: relative;
+}
+
+.sheet::before { /* red margin rule */
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0; left: 56px;
+  width: 1.5px;
+  background: rgba(194, 64, 47, 0.4);
+}
+
+.sheet h2 {
+  margin: 0 0 2px;
+  font-family: "Special Elite", monospace;
+  font-size: 21px;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+}
+
+.sheet .meta {
+  font-family: "Special Elite", monospace;
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin: 0 0 18px;
+}
+
+.sheet .counterline {
+  float: right;
+  text-align: right;
+  font-family: "Courier Prime", monospace;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+.sheet .counterline b { color: var(--red); }
+
+.songline { display: flex; gap: 10px; margin: 6px 0 16px; clear: both; }
+
+.songline input {
+  font-family: "Special Elite", monospace;
+  font-size: 15px;
+  color: var(--ink);
+  background: rgba(255,255,255,0.4);
+  border: none;
+  border-bottom: 2px solid rgba(46,36,26,0.5);
+  padding: 7px 9px 5px;
+  outline: none;
+  flex: 1.5;
+}
+.songline input + input { flex: 1; }
+.songline input:focus { border-bottom-color: var(--red); background: rgba(255,255,255,0.75); }
+.songline button {
+  font-family: "Special Elite", monospace;
+  font-size: 13px;
+  background: var(--ink);
+  color: var(--paper);
+  border: none;
+  padding: 6px 16px;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 rgba(46,36,26,0.35);
+}
+.songline button:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 rgba(46,36,26,0.35); }
+
+.tracks { list-style: none; margin: 0; padding: 0; font-family: "Special Elite", monospace; }
+
+.tracks li {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  font-size: 15.5px;
+  line-height: 35px;
+  height: 36px;
+  overflow: hidden;
+}
+
+.tracks .no { color: var(--red); min-width: 24px; font-size: 13px; }
+.tracks .t { font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tracks .a { color: var(--ink-soft); font-size: 13.5px; white-space: nowrap; }
+.tracks .dur { margin-left: auto; color: var(--ink-soft); font-size: 12.5px; font-family: "Courier Prime", monospace; }
+
+.tracks .x {
+  border: none; background: none; cursor: pointer;
+  color: rgba(46,36,26,0.4); font-size: 14px; font-family: inherit;
+  padding: 0 2px;
+}
+.tracks .x:hover { color: var(--red); }
+
+.tracks .side-stamp {
+  font-family: "Permanent Marker", cursive;
+  color: var(--red);
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  transform: rotate(-1.4deg);
+  opacity: 0.85;
+  height: 36px;
+  line-height: 36px;
+}
+
+.sheet .empty {
+  font-family: "Special Elite", monospace;
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 36px;
+}
+
+/* ============================================================
+   SCENE 3 — the print
+   ============================================================ */
+
+.print {
+  background: #fdfaf1;
+  padding: 14px 14px 46px;
+  box-shadow: 0 26px 60px rgba(0,0,0,0.65), 0 6px 16px rgba(0,0,0,0.4);
+  transform: rotate(-1.1deg);
+  position: relative;
+}
+
+.print::after { /* handwritten caption on the print border */
+  content: attr(data-caption);
+  position: absolute;
+  bottom: 10px; left: 0; right: 0;
+  text-align: center;
+  font-family: "Caveat", cursive;
+  font-weight: 700;
+  font-size: 21px;
+  color: #4a3a2b;
+}
+
+.print canvas {
+  display: block;
+  width: min(480px, 84vw);
+  height: auto;
+}
+
+/* strips of tape on the corners */
+.print .tape-strip {
+  position: absolute;
+  width: 92px; height: 26px;
+  background: rgba(232, 216, 168, 0.65);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+  backdrop-filter: blur(1px);
+}
+.print .tape-strip.tl { top: -10px; left: -26px; transform: rotate(-38deg); }
+.print .tape-strip.br { bottom: 26px; right: -30px; transform: rotate(-42deg); }
+
+.console-row {
+  display: flex;
+  gap: 14px;
+  margin-top: 36px;
+}
+
+.hifi-btn {
+  appearance: none;
+  font-family: "Jost", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+  color: var(--brass);
+  padding: 14px 34px;
+  border-radius: 10px;
+  border: 1px solid #00000099;
+  background: linear-gradient(180deg, #3a2c1e, #241812);
+  box-shadow: inset 0 1px 0 rgba(255,222,160,0.18), 0 5px 12px rgba(0,0,0,0.55);
+  cursor: pointer;
+  transition: transform 0.08s ease, color 0.15s ease, box-shadow 0.2s ease;
+}
+
+.hifi-btn:hover { color: var(--amber); box-shadow: inset 0 1px 0 rgba(255,222,160,0.18), 0 5px 18px rgba(255,184,77,0.18), 0 5px 12px rgba(0,0,0,0.55); }
+.hifi-btn:active { transform: translateY(1px); }
+
+.hifi-btn.rec { color: #e88; }
+
+.share-note { font-size: 12px; letter-spacing: 0.2em; color: #a58a5c; margin-top: 16px; min-height: 1em; }
+
+.footing {
+  margin-top: 46px;
+  font-size: 11px;
+  letter-spacing: 0.4em;
+  text-indent: 0.4em;
+  color: #6b5738;
+  text-transform: uppercase;
+}
+</style>
+</head>
+<body>
+
+  <header class="plaque">
+    <h1>MIXTAPE</h1>
+    <p>a tape for your love</p>
+  </header>
+
+  <nav class="deck" aria-label="Steps">
+    <button class="is-active" data-goto="1"><span class="led"></span><span class="num">01</span> REC</button>
+    <button data-goto="2"><span class="led"></span><span class="num">02</span> TRACKS</button>
+    <button data-goto="3"><span class="led"></span><span class="num">03</span> PRINT</button>
+  </nav>
+
+  <!-- ============ SCENE 1 ============ -->
+  <section class="scene is-on" id="scene-1">
+    <p class="scene-hint">Write on the tape · then dig an era from the crate</p>
+
+    <div class="cassette" id="cassette">
+      <span class="screw tl"></span><span class="screw tr"></span>
+      <span class="screw bl"></span><span class="screw br"></span>
+
+      <div class="label">
+        <div class="band"></div>
+        <div class="write-row">
+          <input class="title-input" id="in-title" maxlength="34" placeholder="write the title here…" autocomplete="off" />
+        </div>
+        <div class="duo">
+          <span>for</span><input id="in-to" maxlength="20" placeholder="her / him" autocomplete="off" />
+          <span>from</span><input id="in-from" maxlength="20" placeholder="you" autocomplete="off" />
+        </div>
+        <span class="side-badge">SIDE A</span>
+        <span class="type-line">TYPE II · 90</span>
+      </div>
+
+      <div class="window">
+        <div class="reel"><div class="tape"></div><div class="hub"></div></div>
+        <div class="reel small"><div class="tape"></div><div class="hub"></div></div>
+        <div class="tape-run"></div>
+      </div>
+
+      <div class="plate"><i></i><i></i><i></i></div>
+    </div>
+
+    <div class="crate">
+      <div class="crate__row" id="crate-row"></div>
+    </div>
+  </section>
+
+  <!-- ============ SCENE 2 ============ -->
+  <section class="scene" id="scene-2">
+    <p class="scene-hint">Keep the track sheet · a C-90 holds 45 minutes a side</p>
+
+    <div class="sheet">
+      <div class="counterline" id="counterline">SIDE A <b>00:00</b> / 45:00<br>SIDE B <b>00:00</b> / 45:00</div>
+      <h2>TRACK SHEET</h2>
+      <p class="meta">No. C-90 · recorded with love</p>
+
+      <form class="songline" id="song-form">
+        <input id="in-song" maxlength="38" placeholder="song title" autocomplete="off" required />
+        <input id="in-artist" maxlength="28" placeholder="artist" autocomplete="off" />
+        <button type="submit">TYPE IT</button>
+      </form>
+
+      <ol class="tracks" id="tracks"></ol>
+      <p class="empty" id="tracks-empty">… nothing on the reel yet.</p>
+    </div>
+  </section>
+
+  <!-- ============ SCENE 3 ============ -->
+  <section class="scene" id="scene-3">
+    <p class="scene-hint">Hot off the press · tape it to their door</p>
+
+    <div class="print" id="print" data-caption="">
+      <span class="tape-strip tl"></span>
+      <span class="tape-strip br"></span>
+      <canvas id="cover-canvas" width="1080" height="1080"></canvas>
+    </div>
+
+    <div class="console-row">
+      <button class="hifi-btn" id="btn-print">⎙ &nbsp;PRINT</button>
+      <button class="hifi-btn rec" id="btn-send">♥ &nbsp;SEND</button>
+    </div>
+    <p class="share-note" id="share-note"></p>
+  </section>
+
+  <footer class="footing">rewind · play · repeat</footer>
+
+<script src="themes.js"></script>
+<script src="cover.js"></script>
+<script>
+(() => {
+  "use strict";
+  const THEMES = window.THEMES;
+  const Cover = window.Cover;
+  const $ = (s) => document.querySelector(s);
+
+  const state = { title: "", to: "", from: "", note: "", theme: 0, songs: [] };
+
+  /* shell/label CSS vars per theme so the big DOM cassette matches */
+  const SHELL_VARS = {
+    shibuya: { light: "#ffffff", base: "#ece9e2", dark: "#b3aea1", label: "#f4f2ec", ink: "#241f3a",
+               band: "linear-gradient(90deg,#37b6d9,#7f6dc9,#e668a4)", badgeBg: "#241f3a", badgeFg: "#f4f2ec" },
+    bombay:  { light: "#d05a52", base: "#a8262e", dark: "#6f1219", label: "#f7ecd4", ink: "#3d1c10",
+               band: "linear-gradient(90deg,#c02f6b,#c02f6b)", badgeBg: "#6b1430", badgeFg: "#f7ecd4" },
+    detroit: { light: "#fdf8ea", base: "#efe3c8", dark: "#c0ae8a", label: "#f6efdd", ink: "#3a2e25",
+               band: "linear-gradient(90deg,#d99a2b,#d99a2b)", badgeBg: "#7a2230", badgeFg: "#f6efdd" },
+    camden:  { light: "#4c4c50", base: "#2a2a2c", dark: "#131315", label: "#f4f1e8", ink: "#131313",
+               band: "linear-gradient(90deg,#131313,#131313)", badgeBg: "#131313", badgeFg: "#f4f1e8" },
+  };
+
+  function applyShell() {
+    const t = THEMES[state.theme];
+    const v = SHELL_VARS[t.id];
+    const c = $("#cassette");
+    c.style.setProperty("--shell-light", v.light);
+    c.style.setProperty("--shell-base", v.base);
+    c.style.setProperty("--shell-dark", v.dark);
+    c.style.setProperty("--label-bg", v.label);
+    c.style.setProperty("--label-ink", v.ink);
+    c.style.setProperty("--band", v.band);
+    c.style.setProperty("--badge-bg", v.badgeBg);
+    c.style.setProperty("--badge-fg", v.badgeFg);
+  }
+
+  /* crate sleeves with live mini covers */
+  const buffer = document.createElement("canvas");
+  buffer.width = 1080; buffer.height = 1080;
+  const thumbs = [];
+
+  function buildCrate() {
+    const row = $("#crate-row");
+    THEMES.forEach((t, i) => {
+      const b = document.createElement("button");
+      b.className = "sleeve";
+      b.type = "button";
+      const c = document.createElement("canvas");
+      c.width = 256; c.height = 256;
+      thumbs[i] = c;
+      const tab = document.createElement("span");
+      tab.className = "tab";
+      tab.textContent = `${t.name} · ${t.era.split("·")[1].trim()}`;
+      b.append(c, tab);
+      b.addEventListener("click", () => {
+        state.theme = i;
+        applyShell();
+        updateCrate();
+      });
+      row.appendChild(b);
+    });
+    updateCrate();
+  }
+
+  function updateCrate() {
+    document.querySelectorAll(".sleeve").forEach((s, i) =>
+      s.classList.toggle("is-selected", i === state.theme));
+  }
+
+  let thumbTimer = null;
+  function scheduleThumbs() {
+    clearTimeout(thumbTimer);
+    thumbTimer = setTimeout(() => {
+      THEMES.forEach((t, i) => {
+        Cover.render(buffer, state, t);
+        const tc = thumbs[i].getContext("2d");
+        tc.clearRect(0, 0, 256, 256);
+        tc.drawImage(buffer, 0, 0, 1080, 1080, 0, 0, 256, 256);
+      });
+    }, 220);
+  }
+
+  /* scene 1 inputs */
+  [["#in-title", "title"], ["#in-to", "to"], ["#in-from", "from"]].forEach(([sel, key]) => {
+    $(sel).addEventListener("input", (e) => { state[key] = e.target.value; scheduleThumbs(); });
+  });
+
+  /* scene 2: track sheet with tape-time budget */
+  const SONG_SECONDS = 210; // ~3:30 a song
+  const SIDE_SECONDS = 45 * 60;
+
+  const mmss = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+
+  function renderTracks() {
+    const ol = $("#tracks");
+    ol.textContent = "";
+    $("#tracks-empty").style.display = state.songs.length ? "none" : "block";
+    const aCount = Math.ceil(state.songs.length / 2);
+
+    state.songs.forEach((song, i) => {
+      if (i === 0 && state.songs.length) {
+        const st = document.createElement("li");
+        st.className = "side-stamp";
+        st.textContent = "— SIDE A —";
+        ol.appendChild(st);
+      }
+      if (i === aCount && state.songs.length > 1) {
+        const st = document.createElement("li");
+        st.className = "side-stamp";
+        st.textContent = "— SIDE B —";
+        ol.appendChild(st);
+      }
+      const li = document.createElement("li");
+      const no = document.createElement("span"); no.className = "no";
+      no.textContent = String((i < aCount ? i : i - aCount) + 1).padStart(2, "0");
+      const t = document.createElement("span"); t.className = "t"; t.textContent = song.title;
+      const a = document.createElement("span"); a.className = "a"; a.textContent = song.artist ? "— " + song.artist : "";
+      const dur = document.createElement("span"); dur.className = "dur"; dur.textContent = "3:30";
+      const x = document.createElement("button"); x.className = "x"; x.type = "button"; x.textContent = "✕";
+      x.addEventListener("click", () => { state.songs.splice(i, 1); renderTracks(); scheduleThumbs(); });
+      li.append(no, t, a, dur, x);
+      ol.appendChild(li);
+    });
+
+    const aSecs = Math.min(aCount * SONG_SECONDS, SIDE_SECONDS);
+    const bSecs = Math.min((state.songs.length - aCount) * SONG_SECONDS, SIDE_SECONDS);
+    $("#counterline").innerHTML =
+      `SIDE A <b>${mmss(aSecs)}</b> / 45:00<br>SIDE B <b>${mmss(bSecs)}</b> / 45:00`;
+  }
+
+  $("#song-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const t = $("#in-song").value.trim();
+    if (!t || state.songs.length >= 12) return;
+    state.songs.push({ title: t, artist: $("#in-artist").value.trim() });
+    $("#in-song").value = ""; $("#in-artist").value = "";
+    $("#in-song").focus();
+    renderTracks();
+    scheduleThumbs();
+  });
+
+  /* scene 3 */
+  function renderCover() {
+    Cover.render($("#cover-canvas"), state, THEMES[state.theme]);
+    $("#print").dataset.caption =
+      `${state.title.trim() || "our mixtape"} — for ${state.to.trim() || "you"}`;
+  }
+
+  $("#btn-print").addEventListener("click", () => {
+    renderCover();
+    const a = document.createElement("a");
+    a.download = "mixtape.png";
+    a.href = $("#cover-canvas").toDataURL("image/png");
+    a.click();
+    $("#share-note").textContent = "PRINTED — GO TAPE IT TO THEIR DOOR";
+  });
+
+  $("#btn-send").addEventListener("click", () => {
+    $("#cover-canvas").toBlob(async (blob) => {
+      if (!blob) return;
+      const file = new File([blob], "mixtape.png", { type: "image/png" });
+      const payload = { files: [file], title: state.title || "Our mixtape" };
+      if (navigator.canShare && navigator.canShare(payload)) {
+        try { await navigator.share(payload); } catch (_) {}
+      } else {
+        $("#share-note").textContent = "SHARING NOT SUPPORTED HERE — USE PRINT";
+      }
+    });
+  });
+
+  /* deck nav */
+  document.querySelectorAll(".deck button").forEach((b) => {
+    b.addEventListener("click", () => {
+      const n = Number(b.dataset.goto);
+      document.querySelectorAll(".deck button").forEach((x) =>
+        x.classList.toggle("is-active", x === b));
+      document.querySelectorAll(".scene").forEach((s, i) =>
+        s.classList.toggle("is-on", i === n - 1));
+      if (n === 3) renderCover();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  });
+
+  buildCrate();
+  applyShell();
+  renderTracks();
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(scheduleThumbs);
+  } else {
+    scheduleThumbs();
+  }
+})();
+</script>
+</body>
+</html>
