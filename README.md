@@ -34,6 +34,21 @@ python3 -m http.server 8000
 | **Detroit '68** | Motown / Tamla | cream, mustard + maroon, vinyl rings, geometric caps |
 | **Camden '79** | UK punk / 2-Tone | checkerboard, photocopy grain, ransom-strip type |
 
+## Planning docs
+
+- [`docs/PRD.md`](docs/PRD.md) — product requirements: problem, hypothesis,
+  personas, jobs, user journeys, requirements, edge cases, metrics, rollout
+- [`docs/TECH-SPEC.md`](docs/TECH-SPEC.md) — architecture, data model, API
+  surface, offline, performance and security
+- [`docs/MUSIC.md`](docs/MUSIC.md) — how songs get found, previewed and played,
+  and why the app never hosts audio
+
+## How we build
+
+`.claude/skills/build-loop/` — the maker/verifier workflow. Three gates (plan →
+loop → ship) with five independent verifiers (design, function, rights,
+a11y/perf, copy) and a hard 3-round limit before escalating to a human.
+
 ## Design system
 
 The look — "The Moodboard" — is frozen as the project's brand aesthetic.
