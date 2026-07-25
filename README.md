@@ -42,6 +42,8 @@ python3 -m http.server 8000
   surface, offline, performance and security
 - [`docs/MUSIC.md`](docs/MUSIC.md) — how songs get found, previewed and played,
   and why the app never hosts audio
+- [`docs/GROWTH.md`](docs/GROWTH.md) — the productised reframe: why the current
+  shape is a greeting card, and the two-sided tape that fixes it
 
 ## How we build
 

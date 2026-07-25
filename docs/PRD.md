@@ -14,6 +14,12 @@
 > on, and they encode judgement calls that are cheap to change now and expensive
 > later. Read those four sections first. Assumptions are labelled **[A]** — they
 > are reasoned, not researched, because no user research exists yet.
+>
+> 🔀 **A structural alternative is on the table.** `docs/GROWTH.md` argues this
+> PRD describes a greeting card — one sender, two hours of work, one recipient,
+> no loop — and proposes a two-sided tape filled one song a day by both people.
+> If that reframe is accepted, §5 goals, §8 journeys and §14 rollout all change
+> substantially. **Decide that before building past phase 2.**
 
 ---
 
