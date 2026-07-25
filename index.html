@@ -330,7 +330,100 @@
 }
 .tape-budget b { color: var(--blue); font-weight: 700; }
 
-.songline { display: flex; gap: 10px; margin: 20px 0 6px; }
+/* ---------- the finder: search, moods, results ---------- */
+.finder { position: relative; margin: 20px 0 6px; }
+
+.finder__input {
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 16px;
+  color: var(--ink);
+  background: transparent;
+  border: none;
+  border-bottom: 1.6px solid rgba(0, 0, 0, 0.5);
+  padding: 9px 4px 7px;
+  outline: none;
+  border-radius: 0;
+}
+.finder__input:focus { border-bottom-color: var(--blue); }
+.finder__input::placeholder { color: #a9a9a9; }
+
+.moods {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 7px;
+  margin-top: 13px;
+}
+
+.moods__lead {
+  font-family: var(--hand);
+  font-weight: 700;
+  font-size: 17px;
+  color: var(--blue);
+  margin-right: 2px;
+  transform: rotate(-1deg);
+}
+
+.mood-chip {
+  appearance: none;
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: transparent;
+  border: 1.4px solid var(--hairline);
+  border-radius: 999px;
+  padding: 6px 13px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.mood-chip:hover { color: var(--ink); border-color: var(--ink); }
+.mood-chip.is-on { background: var(--ink); border-color: var(--ink); color: #fff; }
+
+.results { margin-top: 14px; }
+.results[hidden] { display: none; }
+
+.results__list { list-style: none; margin: 0; padding: 0; }
+
+.results__list li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 9px 8px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 15px;
+}
+.results__list li:hover,
+.results__list li.is-cursor { background: rgba(43, 63, 212, 0.07); }
+.results__list li.is-cursor { box-shadow: inset 0 0 0 1.4px rgba(43, 63, 212, 0.35); }
+
+.results__t { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.results__a { color: var(--muted); font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.results__y { color: #b0b0b0; font-size: 12.5px; margin-left: auto; flex: none; }
+.results__add { color: var(--blue); font-weight: 700; flex: none; font-size: 16px; }
+
+.results__note {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0;
+  padding: 8px 8px 0;
+}
+.results__note:empty { display: none; }
+
+.finder__foot {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--hairline);
+}
+
+.songline { display: flex; gap: 10px; margin: 16px 0 6px; align-items: center; flex-wrap: wrap; }
+.songline[hidden] { display: none; }
 
 .songline input {
   font-family: var(--mono);
@@ -533,10 +626,30 @@
         <div class="tape-budget" id="tape-budget">SIDE A <b>00:00</b> / 45:00<br>SIDE B <b>00:00</b> / 45:00</div>
       </div>
 
-      <form class="songline" id="song-form">
+      <div class="finder">
+        <input class="finder__input" id="in-search" maxlength="60"
+               placeholder="search a song, or pick a feeling…" autocomplete="off"
+               role="combobox" aria-expanded="false" aria-controls="results-list"
+               aria-autocomplete="list" aria-label="Search for a song" />
+
+        <div class="moods" id="moods"></div>
+
+        <div class="results" id="results" hidden>
+          <ul class="results__list" id="results-list" role="listbox" aria-label="Search results"></ul>
+          <p class="results__note" id="results-note" role="status"></p>
+        </div>
+
+        <!-- the escape hatch is always reachable, never nested in the results -->
+        <div class="finder__foot">
+          <button class="backlink" id="btn-manual" type="button">not here? add it by hand</button>
+        </div>
+      </div>
+
+      <form class="songline" id="song-form" hidden>
         <input id="in-song" maxlength="38" placeholder="song title" autocomplete="off" required />
         <input id="in-artist" maxlength="28" placeholder="artist" autocomplete="off" />
         <button class="pill pill--small" type="submit">Add</button>
+        <button class="backlink" id="btn-manual-cancel" type="button">never mind</button>
       </form>
 
       <ol class="tracks" id="tracks"></ol>
@@ -594,6 +707,8 @@
     </button>
   </nav>
 
+<script src="catalog.js"></script>
+<script src="search.js"></script>
 <script src="themes.js"></script>
 <script src="cover.js"></script>
 <script>
@@ -791,27 +906,237 @@
       ol.appendChild(li);
     });
 
-    const aSecs = aCount * SONG_SECONDS;
-    const bSecs = (state.songs.length - aCount) * SONG_SECONDS;
+    // real durations when we know them, the old 3:30 rule of thumb when we don't
+    const secs = (list) =>
+      list.reduce((t, s) => t + (s.durationMs ? Math.round(s.durationMs / 1000) : SONG_SECONDS), 0);
+    const aSecs = secs(state.songs.slice(0, aCount));
+    const bSecs = secs(state.songs.slice(aCount));
     $("#tape-budget").innerHTML =
       `SIDE A <b>${mmss(aSecs)}</b> / 45:00<br>SIDE B <b>${mmss(bSecs)}</b> / 45:00`;
   }
 
-  $("#song-form").addEventListener("submit", (e) => {
+  /* ---------- the finder ---------- */
+
+  const searchInput = $("#in-search");
+  const resultsBox = $("#results");
+  const resultsList = $("#results-list");
+  const resultsNote = $("#results-note");
+  const moodsRow = $("#moods");
+  const manualForm = $("#song-form");
+
+  let results = [];
+  let cursor = -1;
+  let activeMood = null;
+
+  function finderNote(msg) {
+    resultsNote.textContent = msg || "";
+  }
+
+  function atCap() {
+    if (state.songs.length < MAX_SONGS) return false;
+    showResults([], `that's all ${MAX_SONGS} — a tape only holds so much. make a volume two.`);
+    return true;
+  }
+
+  /** The one way a song gets on the tape, whatever the source. */
+  function addTrack(track) {
+    if (atCap()) return;
+    state.songs.push({
+      title: track.title,
+      artist: track.artist || "",
+      album: track.album || null,
+      year: track.year || null,
+      durationMs: track.durationMs || null,
+      provider: track.provider || "manual",
+      providerId: track.providerId || null,
+    });
+    save();
+    renderTracks();
+    scheduleThumbs();
+  }
+
+  function showResults(tracks, note) {
+    results = tracks;
+    cursor = -1;
+    resultsList.textContent = "";
+
+    tracks.forEach((t, i) => {
+      const li = document.createElement("li");
+      li.id = `result-${i}`;
+      li.setAttribute("role", "option");
+      li.setAttribute("aria-selected", "false");
+
+      const title = document.createElement("span");
+      title.className = "results__t";
+      title.textContent = t.title;
+
+      const artist = document.createElement("span");
+      artist.className = "results__a";
+      artist.textContent = t.artist || "";
+
+      const year = document.createElement("span");
+      year.className = "results__y";
+      year.textContent = t.year || "";
+
+      const add = document.createElement("span");
+      add.className = "results__add";
+      add.textContent = "+";
+      add.setAttribute("aria-hidden", "true");
+
+      li.append(title, artist, year, add);
+      li.addEventListener("click", () => {
+        addTrack(t);
+        searchInput.value = "";
+        activeMood = null;
+        renderMoods();
+        closeResults();
+        searchInput.focus();
+      });
+      resultsList.appendChild(li);
+    });
+
+    finderNote(note || "");
+    const hasContent = tracks.length > 0 || !!note;
+    resultsBox.hidden = !hasContent;
+    searchInput.setAttribute("aria-expanded", String(hasContent));
+  }
+
+  function closeResults() {
+    resultsBox.hidden = true;
+    searchInput.setAttribute("aria-expanded", "false");
+    searchInput.removeAttribute("aria-activedescendant");
+    resultsList.textContent = "";
+    finderNote("");           // a message from a previous search must not linger
+    results = [];
+    cursor = -1;
+  }
+
+  function moveCursor(delta) {
+    if (!results.length) return;
+    cursor = (cursor + delta + results.length) % results.length;
+    [...resultsList.children].forEach((li, i) => {
+      const on = i === cursor;
+      li.classList.toggle("is-cursor", on);
+      li.setAttribute("aria-selected", String(on));
+    });
+    const el = resultsList.children[cursor];
+    if (el) {
+      searchInput.setAttribute("aria-activedescendant", el.id);
+      el.scrollIntoView({ block: "nearest" });
+    }
+  }
+
+  let searchTimer = null;
+  async function runSearch(q) {
+    if (atCap()) return;
+    const { tracks, status } = await window.Search.search(q, { limit: 8 });
+
+    let note = "";
+    if (!tracks.length) {
+      note = "nothing here by that name — add it by hand and it'll look just the same.";
+    } else if (status === "ratelimited" || status === "error" || status === "offline") {
+      note = "showing what's built in — wider search is having a moment.";
+    }
+    showResults(tracks, note);
+  }
+
+  searchInput.addEventListener("input", () => {
+    const q = searchInput.value.trim();
+    activeMood = null;
+    renderMoods();
+    clearTimeout(searchTimer);
+    if (!q) return closeResults();
+    searchTimer = setTimeout(() => runSearch(q), 220);
+  });
+
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); moveCursor(1); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); moveCursor(-1); }
+    else if (e.key === "Enter") {
+      e.preventDefault();
+      if (cursor >= 0 && results[cursor]) {
+        addTrack(results[cursor]);
+        searchInput.value = "";
+        activeMood = null;
+        renderMoods();
+        closeResults();
+      }
+    } else if (e.key === "Escape") {
+      closeResults();
+      searchInput.value = "";
+      activeMood = null;
+      renderMoods();
+    }
+  });
+
+  /* ---------- mood chips ---------- */
+
+  function renderMoods() {
+    moodsRow.textContent = "";
+    const lead = document.createElement("span");
+    lead.className = "moods__lead";
+    lead.textContent = "what's it about?";
+    moodsRow.appendChild(lead);
+
+    window.MOODS.forEach((mood) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "mood-chip" + (activeMood === mood.id ? " is-on" : "");
+      chip.textContent = mood.label;
+      chip.setAttribute("aria-pressed", String(activeMood === mood.id));
+      chip.addEventListener("click", () => {
+        if (atCap()) return;
+        if (activeMood === mood.id) {
+          activeMood = null;
+          renderMoods();
+          return closeResults();
+        }
+        activeMood = mood.id;
+        searchInput.value = "";
+        renderMoods();
+        showResults(window.Search.browseMood(mood.bit, 10), `a few for ${mood.label}`);
+      });
+      moodsRow.appendChild(chip);
+    });
+  }
+
+  /* ---------- manual entry: the escape hatch ---------- */
+
+  $("#btn-manual").addEventListener("click", () => {
+    manualForm.hidden = false;
+    closeResults();
+    const guess = searchInput.value.trim();
+    if (guess) $("#in-song").value = guess;
+    searchInput.value = "";
+    $("#in-song").focus();
+  });
+
+  $("#btn-manual-cancel").addEventListener("click", () => {
+    manualForm.hidden = true;
+    $("#in-song").value = "";
+    $("#in-artist").value = "";
+    searchInput.focus();
+  });
+
+  manualForm.addEventListener("submit", (e) => {
     e.preventDefault();
     const input = $("#in-song");
     const t = input.value.trim();
     if (!t) return;
     if (state.songs.length >= MAX_SONGS) {
-      input.setCustomValidity(`A tape only holds ${MAX_SONGS} songs — make a volume two!`);
+      input.setCustomValidity(`a tape only holds ${MAX_SONGS} — make a volume two`);
       input.reportValidity();
       input.setCustomValidity("");
       return;
     }
-    state.songs.push({ title: t, artist: $("#in-artist").value.trim() });
-    input.value = ""; $("#in-artist").value = "";
+    addTrack({ title: t, artist: $("#in-artist").value.trim(), provider: "manual" });
+    input.value = "";
+    $("#in-artist").value = "";
     input.focus();
-    save(); renderTracks(); scheduleThumbs();
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!resultsBox.hidden && !$(".finder").contains(e.target)) closeResults();
   });
 
   /* ---------- scene 3: print & share ---------- */
@@ -895,6 +1220,7 @@
   noteInput.value = state.note;
   applyShell();
   buildFan();
+  renderMoods();
   renderTracks();
 
   const FONT_PROBES = [

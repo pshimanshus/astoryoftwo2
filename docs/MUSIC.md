@@ -20,9 +20,16 @@ So we split the problem into three layers that are usually conflated:
 
 | Layer | What it means | Our answer |
 |---|---|---|
-| **Discovery** | finding and identifying the song | keyless metadata APIs |
+| **Discovery** | finding and identifying the song | built-in catalogue, paste-a-link, then metadata APIs |
 | **Preview** | a 30s taste while building the tape | provider CDN clips, incidental |
-| **Full playback** | actually listening to the tape | delegated to the listener's own platform |
+| **Full playback** | actually listening to the tape | **official embed players, in our own page** |
+
+> **Correction, July 2026.** An earlier draft of this document said manual entry
+> was "the canonical path" and that playback was a hand-off to another app. Both
+> were wrong as product claims. Nobody hand-types twelve songs, and a tape you
+> can't press play on isn't a tape. Search is tier one; embeds mean the tape
+> plays here. The resilience argument those claims came from is real, but it
+> belongs in the failure-mode table at the bottom, not in the design centre.
 
 The emotional product — *someone chose these twelve songs for me, and wrote on
 the cover* — lives entirely in the first and third layers. It survives losing
@@ -108,7 +115,92 @@ touching the data model or the core journey. Build them as a detachable layer.
 
 ---
 
+## Can we just build a streaming service?
+
+Asked and answered properly, because the instinct is right to check.
+
+No — and not for "it's hard" reasons. It's structurally gated:
+
+- You need **master rights** from labels. Universal, Sony and Warner control
+  roughly 70% of recorded music, and they license via **minimum guarantee
+  advances** — typically seven figures each, multi-year, paid before a single
+  user streams. Merlin covers indies on similar terms.
+- Separately you need **publishing**: mechanical (MLC/HFA in the US) and
+  performance (ASCAP/BMI/SESAC/GMR), per territory.
+- Per-stream payouts run ~$0.003–0.005, and roughly 70% of revenue goes to
+  rights holders. Spotify took about fifteen years to reach consistent
+  profitability on that model.
+
+The advances alone put it out of reach, and the gate is contractual rather than
+financial-if-only-we-had-funding. So: no.
+
+**But we don't need to** — because there is a legitimate way to have real
+playback in our own page, which I initially under-weighted.
+
 ## Layer 3 — Full playback (the interesting part)
+
+### The unlock: official embed players
+
+Every major platform ships a **free, keyless, sanctioned iframe embed** — the
+thing blogs and news sites use. It plays *in our page*:
+
+| Platform | What the listener gets |
+|---|---|
+| **Spotify** (`open.spotify.com/embed/track/{id}`) | **full tracks** for logged-in Premium listeners; 30s preview otherwise |
+| **Apple Music** (`embed.music.apple.com`) | full tracks for subscribers; preview otherwise |
+| **YouTube** (`youtube.com/embed/{id}`) | **full tracks for everyone**, no account — the universal floor |
+| SoundCloud / Bandcamp | full tracks for whatever is hosted there |
+
+This is the answer to "how does the recipient listen". **The tape has a real
+play button and it plays on the tape page.** We host nothing, licence nothing,
+and every play is counted and paid by the platform whose player is doing the
+playing. Embeds exist precisely for this.
+
+The graceful part: a logged-out listener still hears 30-second snippets of every
+track in sequence — which is *exactly* a sampler tape, and carries the gesture
+completely. Premium listeners hear the whole thing. Nobody hits a wall.
+
+⚠ Known quirk: driving the Spotify iframe via `EmbedController.play()` can start
+preview playback even for Premium users, while the iframe's own controls play in
+full. Design the player around the native controls rather than scripted
+autoplay — which also keeps sequencing honest rather than simulated.
+
+### Getting the embed IDs
+
+**Spotify's Search endpoint survived the cull** — it was never on the November
+2024 deprecation list (that took Related Artists, Recommendations, Audio
+Features, Audio Analysis, Featured Playlists, Category Playlists and
+`preview_url`). Search runs on app-level client credentials, so no user login,
+and it returns exactly the track IDs the embed needs.
+
+⚠ Two live caveats: the `limit` max dropped from 50 to 10 (default 20 → 5) in
+February 2026, and a **development-mode app is capped at 25 users** — going
+public needs extended quota approval, which has been restricted since May 2025.
+So Spotify search is excellent to build on and **risky as the sole foundation**.
+Keep Deezer/iTunes (keyless, no approval gate) as the parallel path.
+
+### Tier 0 — paste a link (no API at all)
+
+The move that needs no provider: **let the sender paste any music link.** They
+are already inside Spotify or YouTube at the moment they think of a song. One
+paste gives us a canonical ID, an embed, and — via Odesli — every other
+platform. Zero quota, zero approval, zero failure mode.
+
+This should sit alongside search, not behind it. It is how people actually share
+music today.
+
+### The differentiator: voice between the tracks
+
+The one piece of audio we *can* legally host is **the sender's own voice**,
+because they own it.
+
+Real mixtapes had someone talking between songs. A tape where your person says
+*"this one's about that night in Goa"* before track four is something no
+streaming service can offer, costs a few seconds of storage per tape, and is the
+single strongest reason the artefact lives here rather than as a playlist.
+
+Songs come from the platforms. The voice comes from us. We own the only part
+that was ever really personal.
 
 A tape is an ordered list of song identities. Turning that into *actual
 listening* is a resolution problem, and the answer differs per recipient.
