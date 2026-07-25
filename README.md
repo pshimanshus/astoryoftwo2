@@ -34,11 +34,25 @@ python3 -m http.server 8000
 | **Detroit '68** | Motown / Tamla | cream, mustard + maroon, vinyl rings, geometric caps |
 | **Camden '79** | UK punk / 2-Tone | checkerboard, photocopy grain, ransom-strip type |
 
+## Design system
+
+The look — "The Moodboard" — is frozen as the project's brand aesthetic.
+Before building or restyling any screen, component or cover, load the
+skill at `.claude/skills/mixtape-brand/`. It defines the non-negotiables,
+tokens, type scale, component recipes, copy voice, and the render →
+critique → refine loop that every visual change goes through.
+
+`brand.css` is the runtime half of that system: tokens, the grid-paper
+ground, and shared primitives. Screens import it and add only their own
+specifics.
+
 ## Files
 
-- `index.html` — the app (UI + interactions, self-contained)
+- `index.html` — the app (screens + interactions)
+- `brand.css` — brand tokens and shared primitives
 - `themes.js` — the five era painters (backgrounds + cassette labels)
 - `cover.js` — cover composition + the realistic cassette renderer
 - `prototype.html` — earlier "Listening Room" design exploration
 - `fonts/` — self-hosted woff2 fonts
-- `DESIGN.md` — aesthetic direction, references, and the design-loop workflow
+- `DESIGN.md` — aesthetic rationale, references, and the iteration log
+- `.claude/skills/mixtape-brand/` — the frozen brand aesthetic skill

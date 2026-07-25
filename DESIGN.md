@@ -1,5 +1,11 @@
 # Design notes
 
+> **The Moodboard aesthetic is frozen as the project's brand.**
+> It is codified as a skill at `.claude/skills/mixtape-brand/` and enforced
+> in code by `brand.css`. Load the skill before building or restyling any
+> screen, component, or cover. This document is the rationale and the
+> iteration log; the skill is the spec.
+
 ## Aesthetic direction: "The Moodboard"
 
 The app is an editorial scrapbook page — the aesthetic of curated
@@ -55,10 +61,36 @@ Every visual change goes through this loop before it ships:
    legibility at share size.
 5. **Refine** — fix and re-render until the critique passes.
 
-Iterations shipped through the loop so far: 3 full passes (Apple-clean
-v2 → Listening Room prototype → Moodboard), plus per-theme fixes
-(occluded label text, footer/checkerboard collisions, truncation,
-tracking compensation on centered text, dynamic panel height).
+### Iteration log
+
+1. **Apple-clean** — system font stack, segmented stepper, white cards.
+   Correct but generic; the covers carried all the personality and the
+   chrome carried none.
+2. **The Listening Room** — walnut desk, brass plaque, amber LEDs, a
+   record crate. Atmospheric, but the heavy dark furniture fought the
+   artwork and read as skeuomorphic pastiche.
+3. **The Moodboard** *(frozen)* — editorial scrapbook. Light grid paper
+   lets the covers be the color in the room; the serif gives it a voice;
+   blue felt-tip makes the user's contribution visibly *theirs*.
+
+Per-pass fixes found only by rendering: cassette occluding its own label
+text, the Camden checkerboard and Bombay bead row colliding with the
+signature line, Courier tracklists truncating early, centered
+letterspaced text drifting right (both CSS and canvas), fixed-height
+tracklist panel leaving dead space, the "play me!" doodle overlapping the
+eyebrow copy.
+
+### Enforcement
+
+The system is codified twice so it can't drift:
+
+- `.claude/skills/mixtape-brand/` — the spec (principles, tokens, type
+  scale, angle budget, component recipes, copy voice, design-loop
+  checklist). Loaded before any UI work.
+- `brand.css` — the runtime foundation: tokens, the grid ground, and the
+  shared primitives (`.sticker`, `.pill`, `.backlink`, `.date-badge`,
+  `.doodle`, `.dock`, `.footing`). Screens import it and add only what is
+  specific to them.
 
 ## Cassette realism
 

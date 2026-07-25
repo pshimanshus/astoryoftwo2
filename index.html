@@ -5,73 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Mixtape — a tape for your love</title>
 <meta name="description" content="Make someone a mixtape: write on the tape, keep a track sheet, and share an era-authentic cassette cover." />
+<link rel="stylesheet" href="brand.css" />
 <style>
 /* ============================================================
-   MIXTAPE — "The Moodboard"
-   Editorial scrapbook: grid paper, big serif headlines, objects
-   as tilted stickers, blue felt-tip notes, a floating dock.
+   MIXTAPE — screen styles
+   The brand foundation (tokens, ground, sticker, pill, backlink,
+   date badge, doodle, dock) lives in brand.css, which is generated
+   from .claude/skills/mixtape-brand. Only app-specific pieces —
+   the cassette, the track sheet, the print — belong here.
    ============================================================ */
-
-@font-face { font-family: "Instrument Serif"; font-style: normal; src: url("fonts/instrument-serif-1.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Instrument Serif"; font-style: italic; src: url("fonts/instrument-serif-2.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Caveat"; font-weight: 700; src: url("fonts/caveat-700-1.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Archivo Black"; font-weight: 400; src: url("fonts/archivo-black-1.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Yatra One"; font-weight: 400; src: url("fonts/yatra-one-1.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Jost"; font-weight: 700; src: url("fonts/jost-700-1.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Special Elite"; font-weight: 400; src: url("fonts/special-elite-1.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Permanent Marker"; font-weight: 400; src: url("fonts/permanent-marker-1.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Courier Prime"; font-weight: 400; src: url("fonts/courier-prime-1.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Courier Prime"; font-weight: 700; src: url("fonts/courier-prime-2.woff2") format("woff2"); font-display: swap; }
-
-:root {
-  --bg: #ececec;
-  --grid: rgba(0, 0, 0, 0.06);
-  --ink: #141414;
-  --muted: #7c7c7c;
-  --blue: #2b3fd4;
-  --card: #ffffff;
-  --hairline: rgba(0, 0, 0, 0.16);
-  --shadow-sticker: 0 14px 34px rgba(0, 0, 0, 0.16), 0 3px 8px rgba(0, 0, 0, 0.08);
-  --serif: "Instrument Serif", Georgia, serif;
-  --sans: "Jost", "Helvetica Neue", Arial, sans-serif;
-  --mono: "Courier Prime", "Courier New", monospace;
-  --hand: "Caveat", cursive;
-}
-
-* { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; }
-
-body {
-  min-height: 100vh;
-  color: var(--ink);
-  font-family: var(--sans);
-  background:
-    linear-gradient(var(--grid) 1.2px, transparent 1.2px),
-    linear-gradient(90deg, var(--grid) 1.2px, transparent 1.2px),
-    var(--bg);
-  background-size: 88px 88px, 88px 88px, auto;
-  background-position: -1px -1px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 44px 18px 140px; /* room for the dock */
-  overflow-x: hidden;
-}
 
 /* ---------- masthead ---------- */
 .masthead { text-align: center; margin-bottom: 40px; position: relative; }
 
-.masthead .date-badge {
-  display: inline-block;
-  font-family: var(--serif);
-  font-size: 17px;
-  padding: 5px 18px;
-  border: 1.8px solid var(--ink);
-  border-radius: 50%;
-  transform: rotate(-2deg);
-  margin-bottom: 14px;
-  background: var(--bg);
-}
+.masthead .date-badge { margin-bottom: 14px; }
 
 .masthead h1 {
   margin: 0;
@@ -96,15 +43,7 @@ body {
   color: var(--muted);
 }
 
-/* blue felt-tip doodles floating on the page */
-.doodle {
-  position: absolute;
-  font-family: var(--hand);
-  font-weight: 700;
-  color: var(--blue);
-  pointer-events: none;
-  user-select: none;
-}
+/* doodle placements — the base .doodle rule lives in brand.css */
 .doodle--heart { font-size: 30px; right: -34px; top: 4px; transform: rotate(12deg); }
 .doodle--note { font-size: 21px; left: -74px; top: 46%; transform: rotate(-8deg); }
 
@@ -119,17 +58,6 @@ body {
   color: var(--ink);
   margin: 0 0 22px;
   text-align: center;
-}
-
-/* ============================================================
-   stickers (shared card language)
-   ============================================================ */
-
-.sticker {
-  background: var(--card);
-  padding: 22px;
-  box-shadow: var(--shadow-sticker);
-  border-radius: 6px;
 }
 
 /* ============================================================
@@ -420,28 +348,6 @@ body {
 .songline input:focus { border-bottom-color: var(--blue); }
 .songline input::placeholder { color: #a9a9a9; }
 
-.pill {
-  appearance: none;
-  font-family: var(--sans);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.22em;
-  text-indent: 0.22em;
-  text-transform: uppercase;
-  border-radius: 999px;
-  padding: 12px 26px;
-  cursor: pointer;
-  border: 1.6px solid var(--ink);
-  background: var(--ink);
-  color: #fff;
-  transition: transform 0.1s ease, background 0.15s ease, color 0.15s ease;
-}
-.pill:hover { background: #000; }
-.pill:active { transform: scale(0.97); }
-.pill--ghost { background: transparent; color: var(--ink); }
-.pill--ghost:hover { background: rgba(0,0,0,0.06); }
-.pill--small { padding: 9px 18px; }
-
 .tracks { list-style: none; margin: 10px 0 0; padding: 0; }
 
 .tracks .side-stamp {
@@ -561,75 +467,7 @@ body {
 /* ---------- scene footers ---------- */
 .scene-nav { display: flex; gap: 14px; margin-top: 34px; align-items: center; }
 
-.backlink {
-  appearance: none;
-  border: none;
-  background: none;
-  cursor: pointer;
-  font-family: var(--serif);
-  font-style: italic;
-  font-size: 17px;
-  color: var(--muted);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.backlink:hover { color: var(--ink); }
-
-/* ============================================================
-   the dock
-   ============================================================ */
-
-.dock {
-  position: fixed;
-  bottom: 22px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 6px;
-  padding: 9px;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 18px 44px rgba(0,0,0,0.22), 0 2px 6px rgba(0,0,0,0.08), inset 0 0 0 1px rgba(0,0,0,0.05);
-  z-index: 10;
-}
-
-.dock button {
-  appearance: none;
-  border: none;
-  background: transparent;
-  font-family: var(--sans);
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 11px 20px;
-  border-radius: 15px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-indent: 0.1em;
-  text-transform: uppercase;
-  color: var(--muted);
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
-}
-.dock button:hover { transform: translateY(-2px); color: var(--ink); }
-.dock button.is-active { background: var(--ink); color: #fff; }
-.dock button svg { width: 19px; height: 19px; flex: none; }
-.dock button .step-no { font-size: 10px; opacity: 0.55; }
-
-.footing {
-  margin-top: 52px;
-  font-family: var(--serif);
-  font-style: italic;
-  font-size: 15px;
-  color: var(--muted);
-}
-
 @media (max-width: 560px) {
-  .dock button { padding: 11px 13px; }
-  .dock button .lbl { display: none; }
   .masthead .doodle--heart { right: 2px; }
   .masthead .doodle--note { left: 2px; }
 }

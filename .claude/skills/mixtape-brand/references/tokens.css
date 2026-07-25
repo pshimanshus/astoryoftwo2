@@ -1,0 +1,61 @@
+/* ============================================================
+   THE MOODBOARD — canonical brand tokens
+   Source of truth. The repo's brand.css is a copy of this file
+   plus the shared primitives; keep them in sync.
+   ============================================================ */
+
+/* ---------- self-hosted faces (never link an external host) ---------- */
+@font-face { font-family: "Instrument Serif"; font-style: normal; src: url("fonts/instrument-serif-1.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Instrument Serif"; font-style: italic; src: url("fonts/instrument-serif-2.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Caveat";           font-weight: 700; src: url("fonts/caveat-700-1.woff2")   format("woff2"); font-display: swap; }
+@font-face { font-family: "Jost";             font-weight: 700; src: url("fonts/jost-700-1.woff2")     format("woff2"); font-display: swap; }
+@font-face { font-family: "Courier Prime";    font-weight: 400; src: url("fonts/courier-prime-1.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Courier Prime";    font-weight: 700; src: url("fonts/courier-prime-2.woff2") format("woff2"); font-display: swap; }
+
+/* era-cover display faces — used inside canvas artwork only */
+@font-face { font-family: "Archivo Black";    font-weight: 400; src: url("fonts/archivo-black-1.woff2")   format("woff2"); font-display: swap; }
+@font-face { font-family: "Yatra One";        font-weight: 400; src: url("fonts/yatra-one-1.woff2")       format("woff2"); font-display: swap; }
+@font-face { font-family: "Special Elite";    font-weight: 400; src: url("fonts/special-elite-1.woff2")   format("woff2"); font-display: swap; }
+@font-face { font-family: "Permanent Marker"; font-weight: 400; src: url("fonts/permanent-marker-1.woff2") format("woff2"); font-display: swap; }
+
+:root {
+  /* surfaces */
+  --bg: #ececec;
+  --grid: rgba(0, 0, 0, 0.06);
+  --card: #ffffff;
+
+  /* ink */
+  --ink: #141414;
+  --muted: #7c7c7c;
+  --blue: #2b3fd4;          /* handwriting ONLY */
+  --hairline: rgba(0, 0, 0, 0.16);
+
+  /* depth */
+  --shadow-sticker: 0 14px 34px rgba(0, 0, 0, 0.16), 0 3px 8px rgba(0, 0, 0, 0.08);
+  --shadow-dock: 0 18px 44px rgba(0, 0, 0, 0.22), 0 2px 6px rgba(0, 0, 0, 0.08),
+                 inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+
+  /* type */
+  --serif: "Instrument Serif", Georgia, serif;
+  --sans: "Jost", "Helvetica Neue", Arial, sans-serif;
+  --mono: "Courier Prime", "Courier New", monospace;
+  --hand: "Caveat", cursive;
+
+  /* geometry */
+  --grid-cell: 88px;
+  --radius-sticker: 6px;
+  --radius-dock: 22px;
+  --ease-pickup: cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+
+/* the ground — apply to body, always */
+.moodboard-ground {
+  background:
+    linear-gradient(var(--grid) 1.2px, transparent 1.2px),
+    linear-gradient(90deg, var(--grid) 1.2px, transparent 1.2px),
+    var(--bg);
+  background-size: var(--grid-cell) var(--grid-cell),
+                   var(--grid-cell) var(--grid-cell),
+                   auto;
+  background-position: -1px -1px;
+}
