@@ -162,14 +162,19 @@ Saturate one university's international cohort before touching anything else.
 
 **Build, in this order:**
 
-| # | Thing | Why it's first |
+| # | Thing | Why here |
 |---|---|---|
-| 1 | Send one song + one line, to a link | The whole loop needs this and nothing else |
-| 2 | Two-sided tape — their side starts empty | The mechanic. Without it there is no product. |
-| 3 | Notifications ("she added a song") | The inner loop is a notification loop |
-| 4 | Smudged sender until they reply | The curiosity gap |
-| 5 | Tape "completes" at 12 → the cover | The reward, and the acquisition channel |
-| 6 | Embedded players on the tape page | It has to actually play — see `MUSIC.md` |
+| 1 | Send one song **and the reason why**, to a link | The reason *is* the product. Spotify has nowhere to put it. Ship this before anything else. |
+| 2 | **Voice note** on a track — record 10s, attach | The moat. Crude is fine; this is the thing that makes someone cry. Validate it early. |
+| 3 | Two-sided tape — their side starts empty | The loop mechanic. Weak on its own (Blend exists), strong once 1 and 2 are there. |
+| 4 | Notifications ("she added a song") | The inner loop is a notification loop |
+| 5 | Embedded players on the tape page | It has to actually play — see `MUSIC.md` |
+| 6 | Tape "completes" at 12 → the cover | The reward, and the acquisition channel |
+| 7 | Smudged sender until they reply | The curiosity gap. Optional per-send. |
+
+Note what moved: the reason and the voice are now ahead of the growth mechanic.
+If we ship the two-sided tape first we are competing with Blend on distribution
+and we lose. If we ship reasons and voice first, we are not in that fight at all.
 
 Accounts arrive at step 3, because notifications need somewhere to go. Not
 before — never before value.
@@ -179,6 +184,93 @@ first week, the mechanic is wrong and no amount of polish saves it. That is the
 one number that decides whether this is a product or a lovely toy.
 
 ---
+
+## "Spotify already has shared playlists"
+
+The hardest question about this product, and the two-sided mechanic above does
+**not** survive it unassisted. Collaborative playlists and Blend already let two
+people fill one container, free, with the entire catalogue, in an app both
+people already have. If our answer is "ours is prettier," there is no business
+here.
+
+So the answer has to be something Spotify cannot ship without becoming a
+different company. There are exactly three, and everything else is decoration.
+
+### 1. The *why*, per song
+
+The point of a mixtape was never the songs. It was **why that song**.
+
+Spotify has nowhere to write *"this one's about that night in Goa."* No
+annotation layer, no per-track note, no room for a reason. It cannot add one
+without turning a playback utility into a messaging surface — a product
+direction they have repeatedly declined.
+
+That line of text is the actual content. The song is the attachment.
+
+### 2. The voice
+
+The one audio we can legally host is **the sender's own**, because they own it
+(see `MUSIC.md`). Real tapes had someone talking between the songs.
+
+A tape where your person's voice comes in before track four is not a feature
+Spotify is one sprint away from. It is a different product category. And it is
+the single most affecting thing this app can do.
+
+### 3. The object
+
+A playlist has no body. You can't hold it, post it, print it, or put it on a
+shelf. Our cover is a real artefact — and, not incidentally, the acquisition
+channel.
+
+A playlist is also never *finished*, because it's infinite. A C-90 is finished
+at twelve songs, and finishing is what turns it into a gift.
+
+### The real competitive set
+
+The comparison isn't Mixtape vs Spotify. It's **Mixtape vs a handwritten
+letter, a card, a photo book, an Etsy custom cassette.** People pay for all of
+those while email, texts and free photo storage exist, because in a gift the
+medium *is* the message and the effort *is* the signal.
+
+Nobody asks why you'd buy a birthday card when you own a phone.
+
+Framed that way, Spotify isn't the competitor. Spotify is the **catalogue** —
+they do playback, we do the letter wrapped around it. That's why the embed
+architecture in `MUSIC.md` is strategically right and not just a licensing
+workaround: we should *want* them to handle playback.
+
+### So would anyone pay?
+
+Honestly — not for the app. Nobody subscribes to a gift, and paywalling an
+emotional gesture at the moment of sending is both crass and conversion-hostile.
+
+The line that works in this category is **free to make and send, pay to make it
+real:**
+
+| Model | Verdict |
+|---|---|
+| **A physical tape or print** — real shell, printed J-card with your cover | **The one.** ~£20, high margin, occasion-driven. Etsy proves the demand. |
+| **Permanent hosting** — the link never dies | Plausible small one-off (~£3). Weak on its own. |
+| Premium eras / covers | Avoid. DLC on a love letter reads badly. |
+| Subscription | Wrong shape entirely. |
+
+**But be clear-eyed about what that choice costs.** Physical goods mean
+fulfilment, shipping, returns and inventory — a lovely, defensible small
+business, and emphatically *not* the viral consumer rocket the rest of this
+document is optimising for. Those are two different companies. Pick one
+deliberately.
+
+### The correction this forces
+
+We have spent this project building the **cover** — the packaging — and treating
+songs as the content. That's backwards.
+
+> The cassette aesthetic is the wrapping. **The reason and the voice are the
+> product.** They are the only things Spotify structurally cannot copy.
+
+Which reorders the build queue below: annotation and voice notes move ahead of
+almost everything else. A tape with twelve songs and no reasons is a playlist
+with better art, and Spotify wins that fight on distribution alone.
 
 ## The honest tension
 
