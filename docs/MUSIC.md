@@ -165,6 +165,40 @@ preview playback even for Premium users, while the iframe's own controls play in
 full. Design the player around the native controls rather than scripted
 autoplay — which also keeps sequencing honest rather than simulated.
 
+### "Use YouTube Music, not YouTube video"
+
+The right instinct — a tape should play as *music*, not as somebody's fan-made
+visualiser with a lyric overlay. It has a catch and then a better-than-expected
+resolution.
+
+**The catch: there is no official YouTube Music API, and `music.youtube.com`
+URLs are not embeddable.** Libraries like `ytmusicapi` reverse-engineer YouTube
+Music's internal endpoints — they break without notice and sit outside the terms.
+Not something to build a product on.
+
+**The resolution: Art Tracks.** An Art Track is *"an automatically generated
+YouTube version of a sound recording"* — the official, label-sanctioned YouTube
+version of each recording, generated from the label's DDEX feed and **identified
+by ISRC**. They live on auto-generated `Artist – Topic` channels and display
+**static cover art** rather than video. Comments are off; they are catalogue, not
+content.
+
+| What we wanted | What an Art Track gives |
+|---|---|
+| Music, not a music video | Art Tracks *are* the music version — official audio, album art, no visuals |
+| Legally clean | Label-delivered, Content ID'd, streamed by YouTube |
+| Embeddable | Ordinary `youtube.com` video IDs → standard IFrame API |
+| Joinable to our data | Keyed on **ISRC**, already a field in our `Track` |
+
+So "use YT Music" resolves to: **resolve each song to its Art Track video ID and
+embed the standard YouTube player.** No unofficial APIs, no ToS exposure, and
+the thing that plays is the record rather than a video of the record.
+
+Finding them via the Data API: `search.list` with `type=video`,
+`videoCategoryId=10`, then keep results whose `channelTitle` ends in `" - Topic"`.
+Better still, skip the quota entirely where possible — see the resolver chain in
+`JOURNEY.md`, which asks Odesli first.
+
 ### Field evidence, and two corrections
 
 A working example of this architecture (salon.wtf) reportedly does exactly the

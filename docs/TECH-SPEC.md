@@ -67,6 +67,29 @@ this ever needs a framework, that's a decision to make with evidence, not now.
 Version the schema now. Migrating a saved tape someone spent an hour on is not
 a place to improvise later.
 
+### Entry — a song *plus why it's there*
+
+A tape is an ordered list of entries, not of tracks. The entry carries the human
+part; the track is the attachment.
+
+```jsonc
+{
+  "id": "uuid",
+  "authorId": "p1",          // which participant added it
+  "addedAt": "2026-07-25T…", // when
+  "side": "A",               // derived in gift mode, authored in duet mode
+  "position": 0,
+  "reason": "the one that was playing when you called",   // THE product
+  "voiceNoteId": null,       // later — the sender's own audio, which we may host
+  "track": { /* Track */ }
+}
+```
+
+`authorId` and `addedAt` are the only two fields that make duet mode (one song a
+day, two-sided — see `GROWTH.md`) a *view change* rather than a migration. Gift
+mode sets one author and ignores `addedAt`. Ship them from day one even though
+gift mode barely uses them.
+
 ### Track
 
 ```jsonc
@@ -75,28 +98,57 @@ a place to improvise later.
   "title": "Fade Into You",     // always user-editable, even when matched
   "artist": "Mazzy Star",
   "album": "So Tonight That I Might See",
+  "year": 1993,
   "durationMs": 294000,         // null ⇒ budget assumes 3:30
-  "isrc": "USEE19300012",       // cross-platform key when available
-  "provider": "deezer",         // deezer | itunes | manual
+  "isrc": "USEE19300012",       // join key for Art Tracks; often absent
+  "provider": "deezer",         // deezer | itunes | spotify | catalog | manual
   "providerId": "3135556",
   "artworkUrl": "https://…",    // hotlinked; NEVER baked into an export
   "previewUrl": "https://…",    // provider CDN; fetched at play, never cached
-  "links": { "universal": "https://song.link/…" }   // resolved lazily
+  "resolved": {                 // filled asynchronously after publish
+    "youtubeVideoId": "…",      // an Art Track — see MUSIC.md
+    "spotifyId": "…",
+    "appleId": "…",
+    "universalUrl": "https://song.link/…"
+  }
 }
 ```
+
+> ⚠ `addTrack()` in `index.html` currently drops `isrc` and `artworkUrl`. ISRC is
+> the join key for Art Track resolution — persisting it is a prerequisite for
+> playback, not a nice-to-have.
 
 ### Published tape (server)
 
 ```jsonc
 {
   "id": "8f3a…",                // ≥128-bit, unguessable, url-safe
-  "tape": { /* client state minus publishedId */ },
+  "mode": "gift",               // gift | duet
+  "title": "…", "to": "…", "from": "…", "note": "…", "theme": 0,
+  "participants": [ { "id": "p1", "name": "…", "role": "a" } ],
+  "entries": [ /* Entry[] */ ],
   "createdAt": "…",
+  "publishedAt": "…",
   "revokedAt": null,
   "ownerToken": "…"             // returned once to the sender; enables edit/revoke
                                 // without an account
 }
 ```
+
+### Resolution cache (server, global, permanent)
+
+```jsonc
+{
+  "key": "USEE19300012",        // isrc, else normalize("title|artist")
+  "youtubeVideoId": "…",        // Art Track
+  "spotifyId": "…", "appleId": "…", "universalUrl": "…",
+  "source": "odesli",           // odesli | youtube-search
+  "resolvedAt": "…"
+}
+```
+
+**This row is shared by every user and never expires.** It is the single most
+important scaling decision in the system — see the resolver below.
 
 `ownerToken` is how "edit after publish" works before accounts exist — the sender
 keeps a capability, not an identity.
@@ -109,7 +161,7 @@ PRD Epic E reuses them directly.
 | Endpoint | Method | Purpose | Cache | Notes |
 |---|---|---|---|---|
 | `/api/search?q=` | GET | track search | 24h edge | Deezer → iTunes fallthrough; returns normalised `Track[]` with a `provider` field so the UI can render the right badge |
-| `/api/resolve` | POST | universal + platform links | 7d edge | batch of ISRC/provider ids; lazy, never blocks the UI |
+| `/api/resolve` | POST | Art Track IDs + platform links | **permanent** | batch; asynchronous, never blocks the UI or publishing |
 | `/api/tapes` | POST | publish | — | idempotency key required; returns `{id, ownerToken}` |
 | `/api/tapes/:id` | GET | fetch a tape | 60s | 404 if revoked |
 | `/api/tapes/:id` | PATCH/DELETE | edit/revoke | — | requires `ownerToken` |
@@ -141,6 +193,39 @@ Rules:
 - **Manual entry is always visible**, not revealed on zero results. It's the
   canonical path (PRD J7).
 - Never block the UI on `/api/resolve`; links fill in behind the tape.
+
+## Resolution — turning a song into something playable
+
+Runs server-side after publish, off the request path. Full sequence and the
+quota arithmetic are in `JOURNEY.md` §4; the decisions that constrain the
+implementation:
+
+1. **Cache first, always.** Key on ISRC, degrading to `normalize("title|artist")`
+   because Deezer `/search` and the iTunes Search API don't return ISRC (Deezer's
+   `/track/{id}` does; Spotify search returns `external_ids.isrc`).
+2. **Odesli before YouTube.** One free call returns youtube / youtubeMusic /
+   spotify / apple links at **zero YouTube quota**. ~10 req/min, so queue it.
+3. **YouTube Data API only on a miss.** `search.list` costs **100 units of
+   10,000/day** — ~100 searches per day across *all* users, no paid tier. Filter
+   to `channelTitle` ending `" - Topic"` to get Art Tracks rather than fan videos.
+4. **The cache is global and permanent.** Tapes skew to well-known songs, so it
+   saturates fast. A per-session cache passes testing and fails in week one.
+5. **Unresolved is not an error.** The row renders; play deep-links to a search.
+
+## Playback
+
+`player.js` wraps the YouTube IFrame API. Three constraints are load-bearing and
+come from YouTube's developer policies, not taste:
+
+- Player viewport **≥200×200**, 16:9 recommended **≥480×270**
+- Controls fully visible; the player **not obscured**
+- **Do not override the platform's rendering** of the player, strip branding, or
+  block ads
+
+The tempting "hide the video, wrap it in our own skin" build is the violation,
+and since YouTube would be our entire playback layer, losing API access ends the
+product. Instead the player goes **inside the cassette window** — an Art Track
+renders as static cover art, which is exactly what a tape window should show.
 
 ## Rendering
 

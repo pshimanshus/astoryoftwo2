@@ -38,8 +38,10 @@ python3 -m http.server 8000
 
 - [`docs/PRD.md`](docs/PRD.md) — product requirements: problem, hypothesis,
   personas, jobs, user journeys, requirements, edge cases, metrics, rollout
+- [`docs/JOURNEY.md`](docs/JOURNEY.md) — the sender and recipient journeys step
+  by step, with the technical sequence behind each one
 - [`docs/TECH-SPEC.md`](docs/TECH-SPEC.md) — architecture, data model, API
-  surface, offline, performance and security
+  surface, resolution, playback, offline, performance and security
 - [`docs/MUSIC.md`](docs/MUSIC.md) — how songs get found, previewed and played,
   and why the app never hosts audio
 - [`docs/GROWTH.md`](docs/GROWTH.md) — the productised reframe: why the current
