@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git add:*)",
+      "Bash(npm run verify:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run render:covers:*)",
+      "Bash(node scripts/:*)",
+      "Bash(python3 -m http.server:*)",
+      "Read(//home/user/astoryoftwo2/**)",
+      "Glob(//home/user/astoryoftwo2/**)",
+      "Grep(//home/user/astoryoftwo2/**)"
+    ]
+  }
+}

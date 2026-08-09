@@ -89,6 +89,55 @@ Tilt is seasoning. Too much and it reads as a novelty template.
   that should feel picked up.
 - Respect `prefers-reduced-motion` for any looping animation (spinning reels).
 
+## Motion
+
+One rule everything derives from:
+
+> **Paper is light and settles fast. The cassette is heavy and turns slowly.
+> Ink is laid down, never faded in.**
+
+Screens call the primitives in `motion.js` and **never hand-tune an easing**,
+the same way they never hand-pick a hex outside the palette.
+
+| Primitive | For | Timing |
+|---|---|---|
+| `settle(el)` / `settleAll(els)` | paper coming to rest — stickers on load, incoming scenes | `--dur-settle` 280ms, staggered 60ms |
+| `writeIn(el)` | a row arriving as if written onto the sheet | `--dur-quick` 180ms |
+| `drawOn(pathEl)` | ink along a path — the scribble selection ring | 320ms |
+| `flip(el, toBack)` | turning the tape over | `--dur-flip` 620ms |
+| `crossFade(el, swap)` | swapping a panel's contents mid-flip | 150/180ms |
+| `stepChange(out, in)` | moving between scenes | `--dur-step` 240ms |
+
+**`prefers-reduced-motion` is handled once, inside `motion.js`** — every
+primitive jumps to its final state. Never re-implement that check in a screen,
+and never add a raw CSS animation without its own reduced-motion rule.
+
+**Motion is a progressive enhancement.** If `vendor/motion.min.js` fails to
+load, the app must remain completely usable — just static. Nothing may depend on
+an animation having run.
+
+Restraint rules, in the spirit of the rotation budget:
+
+- Motion must carry meaning. The flip changes *what you can read*; if an
+  animation only decorates, cut it.
+- Nothing bounces cartoonishly. Overshoot is a few pixels, not a boing.
+- One moving thing at a time in a given region.
+- Never animate `width`/`height`/`top`/`left` — transform and opacity only, so
+  it stays on the compositor.
+
+### Side B
+
+The flip side is **not a recolour** — it is the same tape written later, in
+whatever pen was to hand, after sitting in a drawer:
+
+| | Side A | Side B |
+|---|---|---|
+| ink | `--blue` | `--ink-b` — a drier, greyer biro |
+| label | clean | `--label-b` with `--paper-age` ring stains |
+| handwriting | steady | a degree more rotation, tighter tracking |
+| reels | left full | **swapped** — it has been played through |
+| badge | square | stamped off-square |
+
 ## Components
 
 Full markup and CSS in `references/components.md`. The vocabulary:

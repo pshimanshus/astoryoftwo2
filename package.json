@@ -1,0 +1,22 @@
+{
+  "name": "mixtape",
+  "version": "0.4.0",
+  "private": true,
+  "description": "Make someone a mixtape: write on the tape, say why, share a cassette cover they can play.",
+  "type": "module",
+  "scripts": {
+    "dev": "python3 -m http.server 8321",
+    "build:motion": "esbuild .motion-entry.js --bundle --format=esm --minify --outfile=vendor/motion.min.js",
+    "verify": "npm run verify:build && npm run verify:a11y",
+    "verify:build": "NODE_PATH=/opt/node22/lib/node_modules node scripts/verify-build.cjs",
+    "verify:a11y": "NODE_PATH=/opt/node22/lib/node_modules node scripts/verify-a11y.cjs",
+    "verify:search": "NODE_PATH=/opt/node22/lib/node_modules node scripts/verify-search.cjs",
+    "render:covers": "NODE_PATH=/opt/node22/lib/node_modules node scripts/render-covers.cjs"
+  },
+  "dependencies": {
+    "motion": "^13.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  }
+}

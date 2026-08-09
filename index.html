@@ -734,7 +734,8 @@
 <script src="tape-codec.js"></script>
 <script src="themes.js"></script>
 <script src="cover.js"></script>
-<script>
+<script type="module">
+import * as M from "./motion.js";
 (() => {
   "use strict";
   const THEMES = window.THEMES;
@@ -828,6 +829,7 @@
   const buffer = document.createElement("canvas");
   buffer.width = 1080; buffer.height = 1080;
   const thumbs = [];
+  const thumbRings = [];
 
   function buildFan() {
     const fan = $("#era-fan");
@@ -852,13 +854,17 @@
       ell.setAttribute("cx", "70"); ell.setAttribute("cy", "78");
       ell.setAttribute("rx", "64"); ell.setAttribute("ry", "72");
       ring.appendChild(ell);
+      thumbRings[i] = ell;
 
       b.append(c, cap, ring);
       b.addEventListener("click", () => {
+        const changed = state.theme !== i;
         state.theme = i;
         save();
         applyShell();
         updateFan();
+        // the ring is drawn on, like circling it in pen
+        if (changed) M.drawOn(thumbRings[i]);
       });
       fan.appendChild(b);
     });
@@ -899,6 +905,8 @@
   /* ---------- scene 2: track sheet ---------- */
   const SONG_SECONDS = 210; // ~3:30 a song
   const mmss = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+
+  let justAdded = false;   // only the row that just arrived animates
 
   function renderTracks() {
     const ol = $("#tracks");
@@ -968,7 +976,10 @@
 
       li.append(no, t, a, tools, why);
       ol.appendChild(li);
+      // the newest row arrives as if written onto the sheet
+      if (i === state.songs.length - 1 && justAdded) M.writeIn(li);
     });
+    justAdded = false;
 
     // real durations when we know them, the old 3:30 rule of thumb when we don't
     const secs = (list) =>
@@ -1020,6 +1031,7 @@
       addedAt: new Date().toISOString(),
       resolved: null,
     });
+    justAdded = true;
     save();
     renderTracks();
     scheduleThumbs();
@@ -1289,8 +1301,12 @@
   /* ---------- navigation ---------- */
   let currentStep = 1;
   function gotoStep(n) {
+    const outgoing = $(`#scene-${currentStep}`);
+    const changing = n !== currentStep;
     currentStep = n;
     for (let i = 1; i <= 3; i++) $(`#scene-${i}`).classList.toggle("is-on", i === n);
+    // the outgoing scene lifts away, the incoming one settles onto the desk
+    if (changing) M.stepChange(null, $(`#scene-${n}`));
     document.querySelectorAll(".dock button").forEach((b) => {
       const on = Number(b.dataset.goto) === n;
       b.classList.toggle("is-active", on);
@@ -1333,6 +1349,9 @@
     scheduleThumbs();
     if (currentStep === 3) renderCover();
   });
+
+  // the page arriving: the masthead, then the paper settling onto the desk
+  M.settleAll([$(".masthead"), ...document.querySelectorAll("#scene-1 .sticker, #scene-1 .era-fan, #scene-1 .scene-nav")]);
 })();
 </script>
 </body>

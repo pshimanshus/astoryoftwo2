@@ -40,12 +40,40 @@
    window has to stay a compliant player viewport. */
 .sticker--tape { transform: rotate(-1deg); width: min(820px, 96vw); }
 
+/* the tape is a real object with two sides, so it turns in 3D */
+.tape-3d { perspective: 1600px; width: 100%; }
+
 .cassette {
   position: relative; width: 100%; aspect-ratio: 1.575;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.face {
+  position: absolute; inset: 0;
   border-radius: 14px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
   background: linear-gradient(180deg, var(--shell-light,#fff), var(--shell-base,#f2f0eb) 24%, var(--shell-dark,#c9c6bd));
   box-shadow: inset 0 2px 0 rgba(255,255,255,.5), inset 0 -3px 6px rgba(0,0,0,.3), 0 6px 16px rgba(0,0,0,.22);
 }
+.face--b { transform: rotateY(180deg); }
+
+/* Side B is not a recolour — it is the same tape, written later, in
+   whatever pen was to hand, and it has sat in a drawer since. */
+.face--b .label { background: var(--label-b); }
+.face--b .label::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 38% 60% at 82% 30%, var(--paper-age), transparent 70%),
+    radial-gradient(ellipse 24% 40% at 12% 78%, var(--paper-age), transparent 70%);
+}
+.face--b .label .title {
+  color: var(--ink-b);
+  transform: rotate(-1.4deg);
+  letter-spacing: -0.01em;
+}
+.face--b .idle-note { color: rgba(255,255,255,.4); }
 .screw { position: absolute; width: 15px; height: 15px; border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #d8d3c6, #6b6456 65%, #38332a);
   box-shadow: inset 0 -1px 2px rgba(0,0,0,.6); }
@@ -54,6 +82,16 @@
               linear-gradient(-45deg, transparent 44%, rgba(20,16,10,.85) 46% 54%, transparent 56%); }
 .screw.tl{top:11px;left:11px}.screw.tr{top:11px;right:11px}
 .screw.bl{bottom:11px;left:11px}.screw.br{bottom:11px;right:11px}
+
+.side-badge {
+  position: absolute; left: 7%; top: 7%;
+  z-index: 2;
+  font-family: var(--sans); font-size: 10px; font-weight: 700;
+  letter-spacing: .2em; text-indent: .2em;
+  background: var(--ink); color: #fff;
+  padding: 3px 9px; border-radius: 4px;
+}
+.face--b .side-badge { background: var(--ink-b); transform: rotate(-1.2deg); }
 
 .label {
   position: absolute; left: 7%; right: 7%; top: 7%; height: 26%;
@@ -87,15 +125,12 @@
 /* Below ~700px the cassette's 1.575 ratio would squeeze the window under
    YouTube's 200x200 floor, so the tape reflows instead of shrinking. */
 @media (max-width: 700px) {
-  .cassette { aspect-ratio: auto; padding: 16px 0 20px; }
-  .label {
-    position: relative; left: auto; right: auto; top: auto;
-    height: 62px; width: 86%; margin: 0 auto;
-  }
-  .window {
-    position: relative; left: auto; right: auto; top: auto;
-    height: 230px; width: 88%; margin: 14px auto 0;
-  }
+  /* Faces must stay absolutely positioned or the 3D flip breaks, so give
+     the tape an explicit height rather than a ratio that would squeeze the
+     player under YouTube's 200x200 floor. */
+  .cassette { aspect-ratio: auto; height: 340px; }
+  .label { top: 6%; height: 19%; }
+  .window { top: 29%; height: 65%; }
 }
 
 /* idle state: the reels, until something plays */
@@ -120,6 +155,19 @@
   font-family: var(--sans); font-size: 10px; font-weight: 700;
   letter-spacing: .18em; text-transform: uppercase; color: rgba(255,255,255,.45);
 }
+
+.flip-btn {
+  appearance: none; border: none; background: none; cursor: pointer;
+  margin-top: 20px;
+  font-family: var(--hand); font-weight: 700; font-size: 21px;
+  color: var(--blue);
+  padding: 6px 10px; border-radius: 8px;
+  transform: rotate(-1deg);
+  transition: color .15s ease, background .15s ease;
+}
+.flip-btn:hover { background: rgba(43,63,212,.07); }
+.flip-btn[aria-pressed="true"] { color: var(--ink-b); }
+.flip-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
 /* ---------- the note ---------- */
 .note-card { margin-top: 30px; width: min(620px, 94vw); transform: rotate(.6deg); }
@@ -190,26 +238,52 @@
 
     <main class="stage">
       <div class="sticker sticker--tape">
-        <div class="cassette" id="cassette">
-          <span class="screw tl"></span><span class="screw tr"></span>
-          <span class="screw bl"></span><span class="screw br"></span>
-          <div class="label"><span class="title" id="label-title"></span></div>
-          <div class="window" id="window">
-            <div class="reels" id="reels">
-              <div class="reel"><div class="tape"></div><div class="hub"></div></div>
-              <div class="reel small"><div class="tape"></div><div class="hub"></div></div>
+        <div class="tape-3d">
+          <div class="cassette" id="cassette">
+
+            <div class="face face--a">
+              <span class="screw tl"></span><span class="screw tr"></span>
+              <span class="screw bl"></span><span class="screw br"></span>
+              <span class="side-badge">SIDE A</span>
+              <div class="label"><span class="title" id="label-title"></span></div>
+              <div class="window" id="window">
+                <div class="reels" id="reels">
+                  <div class="reel"><div class="tape"></div><div class="hub"></div></div>
+                  <div class="reel small"><div class="tape"></div><div class="hub"></div></div>
+                </div>
+                <span class="idle-note" id="idle-note"></span>
+              </div>
             </div>
-            <span class="idle-note" id="idle-note"></span>
+
+            <div class="face face--b">
+              <span class="screw tl"></span><span class="screw tr"></span>
+              <span class="screw bl"></span><span class="screw br"></span>
+              <span class="side-badge">SIDE B</span>
+              <div class="label"><span class="title" id="label-title-b"></span></div>
+              <div class="window">
+                <!-- played through: the full reel is now the other one -->
+                <div class="reels">
+                  <div class="reel small"><div class="tape"></div><div class="hub"></div></div>
+                  <div class="reel"><div class="tape"></div><div class="hub"></div></div>
+                </div>
+                <span class="idle-note">the other half</span>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
+
+      <button class="flip-btn" id="btn-flip" hidden aria-pressed="false">
+        flip the tape ↻
+      </button>
 
       <div class="sticker note-card" id="note-card" hidden>
         <p id="tape-note"></p>
       </div>
 
       <div class="sticker list-card">
-        <h2>the <em>tracklist</em></h2>
+        <h2>the <em id="list-side">A side</em></h2>
         <ol class="tracks" id="tracks"></ol>
       </div>
 
@@ -234,7 +308,8 @@
 <script src="cover.js"></script>
 <script src="resolve.js"></script>
 <script src="player.js"></script>
-<script>
+<script type="module">
+import * as M from "./motion.js";
 (() => {
   "use strict";
   const $ = (s) => document.querySelector(s);
@@ -259,16 +334,27 @@
     c.style.setProperty("--write-ink", v.write);
   }
 
-  function renderTracks(tape) {
+  /* Which entries belong to the side you are looking at. The flip is only
+     meaningful if it actually changes what you can read. */
+  function sideEntries(tape, side) {
+    const aCount = Math.ceil(tape.songs.length / 2);
+    const from = side === "B" ? aCount : 0;
+    const to = side === "B" ? tape.songs.length : aCount;
+    return tape.songs
+      .map((song, i) => ({ song, i }))
+      .slice(from, to);
+  }
+
+  function renderTracks(tape, side) {
     const ol = $("#tracks");
     ol.textContent = "";
-    const aCount = Math.ceil(tape.songs.length / 2);
+    const rows = sideEntries(tape, side);
 
-    tape.songs.forEach((song, i) => {
-      if (i === 0 || (i === aCount && tape.songs.length > 1)) {
+    rows.forEach(({ song, i }, n) => {
+      if (n === 0) {
         const st = document.createElement("li");
         st.className = "side-stamp";
-        st.textContent = i === 0 ? "side A —" : "flip it! side B —";
+        st.textContent = side === "B" ? "side B —" : "side A —";
         ol.appendChild(st);
       }
 
@@ -278,7 +364,7 @@
 
       const no = document.createElement("span");
       no.className = "no";
-      no.textContent = String((i < aCount ? i : i - aCount) + 1).padStart(2, "0");
+      no.textContent = String(n + 1).padStart(2, "0");
 
       const t = document.createElement("span");
       t.className = "t"; t.textContent = song.title;
@@ -306,6 +392,8 @@
 
       ol.appendChild(li);
     });
+
+    $("#list-side").textContent = side === "B" ? "B side" : "A side";
   }
 
   function markPlaying(i) {
@@ -344,8 +432,37 @@
     $("#tape-sig").textContent = from ? `with love, ${from} ♥` : "♥";
 
     applyShell(theme);
-    renderTracks(tape);
+    $("#label-title-b").textContent = tape.title || "our mixtape";
+
+    let side = "A";
+    renderTracks(tape, side);
     $("#app").hidden = false;
+
+    // The flip only exists if there is a B side to turn to.
+    const aCount = Math.ceil(tape.songs.length / 2);
+    const hasB = tape.songs.length > aCount;
+    const flipBtn = $("#btn-flip");
+    if (hasB) {
+      flipBtn.hidden = false;
+      let flipping = false;
+      flipBtn.addEventListener("click", async () => {
+        if (flipping) return;
+        flipping = true;
+        side = side === "A" ? "B" : "A";
+        flipBtn.setAttribute("aria-pressed", String(side === "B"));
+        flipBtn.textContent = side === "B" ? "back to side A ↻" : "flip the tape ↻";
+
+        const listCard = document.querySelector(".list-card");
+        await Promise.all([
+          M.flip($("#cassette"), side === "B"),
+          M.crossFade(listCard, () => renderTracks(tape, side)),
+        ]);
+        flipping = false;
+      });
+    }
+
+    // the page arriving: paper settling onto the desk
+    M.settleAll(document.querySelectorAll(".masthead, .sticker, .flip-btn:not([hidden]), .sig, .make-back"));
 
     // Try the player. If YouTube isn't reachable the reels stay and every
     // row still has its "listen" link — the page is never broken by this.
