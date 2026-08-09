@@ -164,17 +164,18 @@ Saturate one university's international cohort before touching anything else.
 
 | # | Thing | Why here |
 |---|---|---|
-| 1 | Send one song **and the reason why**, to a link | The reason *is* the product. Spotify has nowhere to put it. Ship this before anything else. |
-| 2 | **Voice note** on a track — record 10s, attach | The moat. Crude is fine; this is the thing that makes someone cry. Validate it early. |
-| 3 | Two-sided tape — their side starts empty | The loop mechanic. Weak on its own (Blend exists), strong once 1 and 2 are there. |
-| 4 | Notifications ("she added a song") | The inner loop is a notification loop |
-| 5 | Embedded players on the tape page | It has to actually play — see `MUSIC.md` |
-| 6 | Tape "completes" at 12 → the cover | The reward, and the acquisition channel |
-| 7 | Smudged sender until they reply | The curiosity gap. Optional per-send. |
+| 1 | Send one song **and the reason why**, to a link | Table stakes now, not a moat — but the product doesn't exist without it |
+| 2 | Embedded players on the tape page | It has to actually play — see `MUSIC.md` |
+| 3 | **Voice note** on a track — record 10s, attach | Not defensible, but it is the thing that makes someone cry |
+| 4 | Tape "completes" at 12 → the cover | The reward, and the only real acquisition channel |
+| 5 | **The physical tape** — printed J-card + shell | The one thing no competitor above can clone in a sprint |
+| 6 | Two-sided tape — their side starts empty | The loop mechanic. Weak alone; worth it once 1–4 exist. |
+| 7 | Notifications ("she added a song") | The inner loop is a notification loop |
+| 8 | Smudged sender until they reply | Optional per-send |
 
-Note what moved: the reason and the voice are now ahead of the growth mechanic.
-If we ship the two-sided tape first we are competing with Blend on distribution
-and we lose. If we ship reasons and voice first, we are not in that fight at all.
+**Explicitly not building:** a social feed, public tape discovery, taste
+profiles, follower graphs. Every competitor is fighting over that ground, and it
+contradicts a product whose entire premise is one person, one recipient.
 
 Accounts arrive at step 3, because notifications need somewhere to go. Not
 before — never before value.
@@ -260,7 +261,44 @@ business, and emphatically *not* the viral consumer rocket the rest of this
 document is optimising for. Those are two different companies. Pick one
 deliberately.
 
-### The correction this forces
+### ⚠ The category is already crowded — and the "moat" is already shipped
+
+Scanned July 2026. This materially weakens the section above and needs saying
+plainly.
+
+| Product | What it does | Overlap |
+|---|---|---|
+| **supertape.app** | "mixtapes powered by the songs that define your story." Add songs from any platform, add a **story**, share a link. 30s previews with no account. Reactions from friends. | **Near-identical.** Including the per-tape story — the thing I called our moat. |
+| **getmixtape.com** | "Curate playlists, **voice intros**, and artwork." Apple Music partnership, social feed. | **Voice intros already exist.** The other thing I called our moat. |
+| **MusicThread** | Paste links from Bandcamp/Spotify/Apple/SoundCloud; auto cross-platform resolution. | Exactly the paste-a-link + Odesli approach in `MUSIC.md`. |
+| **Modern Mix Tape** | Cross-streaming playlist handoff via URL or QR. | The delegated-playback thesis. |
+| Owline, SongMix, another.party, mymixedtape.io | Social playlist networks, collaborative party lists, taste profiles | Adjacent |
+
+So: **reasons and voice are not defensible.** They are correctly identified as
+things *Spotify* won't ship — but Spotify was never the competitor. At least two
+indie products already have both, today.
+
+**What is actually left, having looked:**
+
+1. **The occasion and the recipient.** Every product above is positioned on
+   *taste, identity, discovery, community*. supertape is explicit: "a new kind of
+   music profile — express who you are." They are all **self-expression**
+   products with a social feed. Not one of them is a **gift to one specific
+   person**. That is a different job, a different emotional register, and a
+   genuinely open position.
+2. **Craft.** They look like SaaS. Our era-authentic covers are a real,
+   defensible difference in a category where everyone ships a colour picker.
+3. **The physical artefact.** Nobody in that list prints anything. A real shell
+   and a printed J-card is the one thing that cannot be cloned in a sprint.
+
+The strategy therefore is **not** "build reasons and voice before someone else
+does" — that race is lost. It is: *be the only one of these that is a love
+letter to one person rather than a profile for an audience*, and be the only one
+that becomes an object you can hold.
+
+Which also means: **drop the social feed, the discovery surface, and the public
+tapes.** Every competitor is fighting over that ground and it actively
+contradicts our positioning.
 
 We have spent this project building the **cover** — the packaging — and treating
 songs as the content. That's backwards.
