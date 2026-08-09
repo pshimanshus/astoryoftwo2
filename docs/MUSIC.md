@@ -165,6 +165,60 @@ preview playback even for Premium users, while the iframe's own controls play in
 full. Design the player around the native controls rather than scripted
 autoplay — which also keeps sequencing honest rather than simulated.
 
+### Field evidence, and two corrections
+
+A working example of this architecture (salon.wtf) reportedly does exactly the
+above: no self-hosted audio, YouTube IFrame player for playback, metadata and
+thumbnails fetched separately for the UI, Spotify linked as the "real" listening
+destination. Good — that is the design in this document, shipping and getting
+traction. Two details matter more than that summary suggests.
+
+**Correction 1 — the audio-only skin is the risky part, not the safe part.**
+
+The tempting move is to hide the video and wrap YouTube in your own player UI.
+That is the specific thing YouTube's policies prohibit:
+
+- Embedded players must have a viewport of **at least 200×200px**; 16:9 players
+  are recommended at **≥480×270**.
+- If the player shows controls, it must be large enough to display them without
+  going under the minimum.
+- **Overriding the platform-specific rendering of the player is prohibited**, as
+  is stripping branding or blocking ads.
+
+Calling this "an inconvenience, not a lawsuit" is true about *copyright* and
+misleading about *risk*. If YouTube is your entire playback layer, losing API
+access is not an inconvenience — it is the product ending on a Tuesday. Treat
+the visible-player requirement as load-bearing.
+
+**The design consequence is a gift, not a tax.** A cassette has a transparent
+window in the middle of it. Put the player *in the window* — a compliant,
+≥480×270 embed sitting exactly where a real tape shows its reels. The policy
+constraint and the brand want the same thing.
+
+**Correction 2 — the Data API quota is the actual wall.**
+
+The Data API is free, but `search.list` costs **100 units against a 10,000/day
+cap** — roughly **100 searches per day across all users combined**. As a
+per-keystroke or even per-user search backend it is unusable, and there is no
+paid tier; more quota means a manual Google review.
+
+The fix is to never put YouTube in the discovery path:
+
+```
+discovery          →  our catalogue / Deezer / iTunes / Spotify search
+                      (keyless or cheap, per user, unlimited-ish)
+                              ↓
+resolve to a YouTube video ID →  ONCE per unique track, globally
+                              ↓
+                      cached forever, shared by every user
+```
+
+Tapes are mostly well-known songs, so the cache saturates fast. A hundred *new*
+track resolutions a day is generous when each one is permanent and serves
+everybody thereafter. That turns an unusable quota into a comfortable one — but
+only if resolution is a shared, persistent, server-side cache rather than a
+per-session lookup.
+
 ### Getting the embed IDs
 
 **Spotify's Search endpoint survived the cull** — it was never on the November
