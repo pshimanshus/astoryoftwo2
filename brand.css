@@ -27,7 +27,9 @@
 
   /* ink */
   --ink: #141414;
-  --muted: #7c7c7c;
+  /* #7c7c7c was only 4.17:1 on white and 3.85:1 on the grid ground — below
+     WCAG AA. This clears 4.5:1 against both surfaces. */
+  --muted: #6b6b6b;
   --blue: #2b3fd4;          /* handwriting ONLY */
   --hairline: rgba(0, 0, 0, 0.16);
 
@@ -83,6 +85,8 @@ body {
 /* ---------- pill button ---------- */
 .pill {
   appearance: none;
+  display: inline-block;        /* so it works as an <a> too */
+  text-decoration: none;
   font-family: var(--sans);
   font-size: 12px;
   font-weight: 700;

@@ -68,7 +68,14 @@ specifics.
 ## Files
 
 - `index.html` — the app (screens + interactions)
+- `tape.html` — the recipient page: cover, note, tracklist with reasons, player
 - `brand.css` — brand tokens and shared primitives
+- `catalog.js` — the built-in song catalogue (facts only, no audio or artwork)
+- `search.js` — catalogue index + provider layer (Deezer/iTunes, flag-gated)
+- `tape-codec.js` — encodes a whole tape into a URL fragment, so sharing needs
+  no server and a shared tape stays private
+- `player.js` — YouTube IFrame wrapper; mounts an Art Track in the cassette window
+- `resolve.js` — cache → Odesli → YouTube resolution chain (flag-gated)
 - `themes.js` — the five era painters (backgrounds + cassette labels)
 - `cover.js` — cover composition + the realistic cassette renderer
 - `prototype.html` — earlier "Listening Room" design exploration
