@@ -1035,12 +1035,12 @@ import * as M from "./motion.js";
     save();
     renderTracks();
     scheduleThumbs();
-    // put the cursor straight in the "why" — the reason is the point
-    requestAnimationFrame(() => {
-      const inputs = document.querySelectorAll(".tracks .why");
-      const last = inputs[inputs.length - 1];
-      if (last) last.focus();
-    });
+    // put the cursor straight in the "why" — the reason is the point.
+    // Synchronous: callers must not focus anything after calling addTrack,
+    // or the caret lands in their field instead of the reason.
+    const inputs = document.querySelectorAll(".tracks .why");
+    const last = inputs[inputs.length - 1];
+    if (last) last.focus();
   }
 
   function showResults(tracks, note) {
@@ -1073,12 +1073,11 @@ import * as M from "./motion.js";
 
       li.append(title, artist, year, add);
       li.addEventListener("click", () => {
-        addTrack(t);
         searchInput.value = "";
         activeMood = null;
         renderMoods();
         closeResults();
-        searchInput.focus();
+        addTrack(t); // last, so the caret ends up in the reason
       });
       resultsList.appendChild(li);
     });
