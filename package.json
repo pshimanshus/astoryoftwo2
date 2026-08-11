@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "python3 -m http.server 8321",
     "build:motion": "esbuild .motion-entry.js --bundle --format=esm --minify --outfile=vendor/motion.min.js",
-    "verify": "npm run verify:build && npm run verify:a11y",
+    "verify": "npm run verify:build && npm run verify:a11y && npm run verify:search && npm run verify:api",
+    "verify:api": "node scripts/verify-api.cjs",
     "verify:build": "NODE_PATH=/opt/node22/lib/node_modules node scripts/verify-build.cjs",
     "verify:a11y": "NODE_PATH=/opt/node22/lib/node_modules node scripts/verify-a11y.cjs",
     "verify:search": "NODE_PATH=/opt/node22/lib/node_modules node scripts/verify-search.cjs",

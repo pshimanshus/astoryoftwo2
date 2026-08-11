@@ -1223,6 +1223,12 @@ import * as M from "./motion.js";
   });
 
   document.addEventListener("click", (e) => {
+    // A mood chip re-renders the row it lives in, so by the time this click
+    // finishes bubbling the clicked node has been replaced and is detached.
+    // `.finder.contains()` then calls it an outside click and closes the
+    // results the chip just opened. A detached target is our own re-render,
+    // never a click somewhere else.
+    if (!e.target.isConnected) return;
     if (!resultsBox.hidden && !$(".finder").contains(e.target)) closeResults();
   });
 

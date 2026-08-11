@@ -35,14 +35,19 @@ const check = (name, pass, detail) => {
 
   // AC2 — clicking a result adds it
   await page.click("#results-list li >> nth=0");
-  check("AC2 click adds the track", (await rows()) === 1, `${await rows()} row(s)`);
+  const addedN = await rows();
+  check("AC2 click adds the track", addedN === 1, `${addedN} row(s)`);
   check("AC2 input clears + results close", (await page.inputValue("#in-search")) === ""
         && (await page.locator("#results").isHidden()), "");
 
   // AC3 — artist-name search works ("mazzy" should find Mazzy Star)
   await page.fill("#in-search", "mazzy");
   await page.waitForTimeout(400);
-  check("AC3 artist search works", (await opts()) > 0, `${await opts()} results`);
+  // Read the count ONCE. Asserting on one call and reporting another lets a
+  // result that lands between them print "FAIL — 1 results", which is a
+  // verifier lying about its own evidence.
+  const mazzyN = await opts();
+  check("AC3 artist search works", mazzyN > 0, `${mazzyN} results`);
 
   // AC4 — multi-word out-of-order search ("mitchell case")
   await page.fill("#in-search", "mitchell case");
@@ -121,7 +126,8 @@ const check = (name, pass, detail) => {
   // AC12 — persistence across reload
   await page.reload({ waitUntil: "networkidle" });
   await page.click(".dock button[data-goto='2']");
-  check("AC12 tracks survive reload", (await rows()) === 12, `${await rows()} rows`);
+  const survivedN = await rows();
+  check("AC12 tracks survive reload", survivedN === 12, `${survivedN} rows`);
 
   // AC13 — remote search flag is OFF and makes no network calls
   const reqs = [];
