@@ -92,7 +92,19 @@
     if (memo.has(key)) return memo.get(key);
 
     if (!FLAGS.remoteResolve && !opts.fetcher) return null;
-    const fetcher = opts.fetcher || ((url) => fetch(url).then((r) => r.json()));
+    // The edge needs the song itself, not just the key: a `ta:` key is
+    // normalised past the point of being searchable, and an `isrc:` key
+    // carries no title to fall back on. So the default fetcher POSTs the
+    // track. Injected fetchers keep the same (url, body) signature.
+    const fetcher = opts.fetcher || ((url, body) =>
+      fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body || {}),
+      }).then((r) => {
+        if (!r.ok) throw new Error(`resolve ${r.status}`);
+        return r.json();
+      }));
 
     // 2 — Odesli
     try {

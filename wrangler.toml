@@ -1,0 +1,33 @@
+# Cloudflare Pages — static root + the two edge functions in functions/.
+#
+# There is no build step: the app is served as-is, which is the point.
+# `pages_build_output_dir = "."` publishes the repo root; functions/ is
+# picked up automatically and is not served as static files.
+
+name = "mixtape"
+compatibility_date = "2024-11-01"
+pages_build_output_dir = "."
+
+# ---- the resolution cache: global, permanent, and the whole ballgame ----
+# YouTube search.list costs 100 units of 10,000/day — ~100 searches per DAY
+# across every user. This namespace is what stops that being a per-user cost.
+# Create it once:  npx wrangler kv namespace create RESOLVE_CACHE
+[[kv_namespaces]]
+binding = "RESOLVE_CACHE"
+id = "REPLACE_WITH_YOUR_KV_ID"
+
+# ---- search results: 24h, disposable ----
+# npx wrangler kv namespace create SEARCH_CACHE
+[[kv_namespaces]]
+binding = "SEARCH_CACHE"
+id = "REPLACE_WITH_YOUR_KV_ID"
+
+[vars]
+# How many YouTube searches a single /api/resolve call may spend. Low on
+# purpose: one 20-song tape must not eat a fifth of the daily quota.
+YOUTUBE_BUDGET_PER_REQUEST = "3"
+
+# YOUTUBE_API_KEY is a secret, never a var:
+#   npx wrangler pages secret put YOUTUBE_API_KEY
+# Without it, resolution still works — Odesli answers most songs and the
+# YouTube step simply skips.

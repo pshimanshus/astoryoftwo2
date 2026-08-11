@@ -1035,12 +1035,12 @@ import * as M from "./motion.js";
     save();
     renderTracks();
     scheduleThumbs();
-    // put the cursor straight in the "why" — the reason is the point
-    requestAnimationFrame(() => {
-      const inputs = document.querySelectorAll(".tracks .why");
-      const last = inputs[inputs.length - 1];
-      if (last) last.focus();
-    });
+    // put the cursor straight in the "why" — the reason is the point.
+    // Synchronous: callers must not focus anything after calling addTrack,
+    // or the caret lands in their field instead of the reason.
+    const inputs = document.querySelectorAll(".tracks .why");
+    const last = inputs[inputs.length - 1];
+    if (last) last.focus();
   }
 
   function showResults(tracks, note) {
@@ -1073,12 +1073,11 @@ import * as M from "./motion.js";
 
       li.append(title, artist, year, add);
       li.addEventListener("click", () => {
-        addTrack(t);
         searchInput.value = "";
         activeMood = null;
         renderMoods();
         closeResults();
-        searchInput.focus();
+        addTrack(t); // last, so the caret ends up in the reason
       });
       resultsList.appendChild(li);
     });
@@ -1224,6 +1223,12 @@ import * as M from "./motion.js";
   });
 
   document.addEventListener("click", (e) => {
+    // A mood chip re-renders the row it lives in, so by the time this click
+    // finishes bubbling the clicked node has been replaced and is detached.
+    // `.finder.contains()` then calls it an outside click and closes the
+    // results the chip just opened. A detached target is our own re-render,
+    // never a click somewhere else.
+    if (!e.target.isConnected) return;
     if (!resultsBox.hidden && !$(".finder").contains(e.target)) closeResults();
   });
 
