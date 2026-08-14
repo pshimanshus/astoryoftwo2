@@ -1,5 +1,6 @@
 node_modules/
 .shots/
+dist/
 .motion-entry.js
 *.log
 .DS_Store

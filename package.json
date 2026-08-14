@@ -11,7 +11,8 @@
     "verify:build": "NODE_PATH=/opt/node22/lib/node_modules node scripts/verify-build.cjs",
     "verify:a11y": "NODE_PATH=/opt/node22/lib/node_modules node scripts/verify-a11y.cjs",
     "verify:search": "NODE_PATH=/opt/node22/lib/node_modules node scripts/verify-search.cjs",
-    "render:covers": "NODE_PATH=/opt/node22/lib/node_modules node scripts/render-covers.cjs"
+    "render:covers": "NODE_PATH=/opt/node22/lib/node_modules node scripts/render-covers.cjs",
+    "build:demo": "node scripts/build-demo.cjs"
   },
   "dependencies": {
     "motion": "^13.0.0"
