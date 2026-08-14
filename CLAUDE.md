@@ -131,12 +131,24 @@ Don't route around a 403 — report it.
 
 ## State of play
 
-Shipped: create flow, five era covers, catalogue search + mood browse, reason
-per track, share-by-link, recipient page, the A/B flip, motion language.
+**This is a working prototype of two screens, not yet an application.**
 
-Next, in order (`docs/GROWTH.md`): voice notes → the physical printed tape →
-two-sided daily mode. A backend earns its place when link previews need a real
-OG image.
+Built: create flow, five era covers, catalogue search (170 songs) + mood browse,
+reason per track, share-by-URL-fragment, recipient page, the A/B flip, motion
+language. All verified — `npm run verify` is 40 checks green.
 
-Open decision: `docs/PRD.md` §16 — whether the premise is validated enough to
-build past phase 2. The stop-gate is a 25% share rate.
+**Not built, and the reason it isn't an app yet:**
+
+- **Playback.** No track resolves to a video id, so nothing plays. This is
+  slice 1 and everything else is secondary to it.
+- No backend — no short links, no real OG preview image, no persistence
+  beyond `localStorage`
+- No live search beyond the built-in catalogue
+- No accounts, no library, no voice notes
+
+**Read `docs/BUILD-PLAN.md` before starting work.** It sequences the remaining
+slices with acceptance criteria. `docs/PRD.md` is the full product scope,
+`docs/TECH-SPEC.md` the contracts, `docs/JOURNEY.md` every flow end to end.
+
+Design principle that governs the sequencing: **anonymous-first.** No slice may
+put an account in front of creating, sending or playing a tape.

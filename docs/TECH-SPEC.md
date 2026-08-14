@@ -1,302 +1,368 @@
-# Technical specification
+# Technical specification — Mixtape
 
-Companion to `docs/PRD.md`. Music/licensing architecture is in `docs/MUSIC.md`.
-This document is the *How*; the PRD is the *What and Why*.
+The *How*. `PRD.md` is the What and Why. `JOURNEY.md` is the flows.
+`BUILD-PLAN.md` is the execution order.
 
-## Guiding constraints
+---
 
-1. **The app works with zero backend.** Everything in phase 0–1 runs from static
-   files + localStorage. The server is an accelerant for sharing, never a
-   requirement for making.
-2. **No third party is a hard dependency.** Every provider degrades to manual.
-3. **No audio, ever.** See the rights checklist.
-4. **The brand is enforced in code** via `brand.css`, not by convention.
+## 0. Principles that constrain every decision
 
-## Architecture
+1. **The app never touches audio bytes.** Playback is an embedded, licensed
+   player. Break this and the product needs licensing it can't afford.
+2. **No third party is a hard dependency.** Every provider degrades to
+   something usable; the app works with all of them down.
+3. **Anonymous-first.** Nothing in the create → send → play path requires an
+   account. Auth is additive.
+4. **The recipient path is sacred.** It must be fast, dependency-light, and up.
 
-```
-┌───────────────────────────────────────────────────────┐
-│  BROWSER                                              │
-│                                                       │
-│  index.html ── brand.css ── themes.js ── cover.js     │
-│       │                                               │
-│       ├── state (in-memory) ──▶ localStorage          │
-│       ├── canvas renderer ────▶ 1080² PNG             │
-│       └── search client ──┐                           │
-└───────────────────────────┼───────────────────────────┘
-                            │  (only when online + flag on)
-                  ┌─────────▼──────────┐
-                  │  EDGE FUNCTIONS    │
-                  │                    │
-                  │  /api/search       │──▶ Deezer → iTunes
-                  │  /api/resolve      │──▶ Odesli      (cache 7d)
-                  │  /api/tapes        │──▶ KV/Postgres
-                  │  /t/:id  (SSR)     │──▶ tape page + OG tags
-                  └────────────────────┘
-```
+---
 
-**Why edge functions rather than a full backend:** the only genuinely
-server-shaped needs are (a) hiding provider calls behind a cache to respect rate
-limits, (b) CORS — Deezer doesn't send permissive headers, (c) server-rendered
-OG tags so a shared link previews properly, (d) persisting published tapes.
-None of that needs a long-running server.
+## 1. Stack and deployment
 
-**Stack recommendation:** keep the app dependency-free vanilla (it already is,
-and the canvas work has no framework to gain from), deploy static + edge
-functions on Cloudflare Pages or Vercel, with KV/D1 or Postgres for tapes. If
-this ever needs a framework, that's a decision to make with evidence, not now.
+**Recommended: Cloudflare.** Chosen because the recipient path is latency- and
+availability-critical and this puts every read at the edge.
 
-## Data model
+| Concern | Choice |
+|---|---|
+| Static app | Cloudflare Pages |
+| API | Pages Functions (Workers runtime) |
+| Tapes, users, sessions | **D1** (SQLite) |
+| Resolution cache, rate limits | **KV** (global, eventually consistent — fine, it's a cache) |
+| Voice notes | **R2** (object storage, user-owned audio only) |
+| OG images | Workers + `@cloudflare/pages-plugin-vercel-og`, cached in KV |
+| Email (magic links) | Resend or Postmark |
 
-### Client state (localStorage, key `mixtape-moodboard`)
+*(Vercel + Postgres + Blob is an equivalent second choice. The code below is
+runtime-agnostic — Web Fetch API handlers, no Node built-ins.)*
 
-```jsonc
-{
-  "v": 2,                       // schema version — migrate on read, never on write
-  "title": "Songs I Never Sent You",
-  "to": "Aanya",
-  "from": "Himanshu",
-  "note": "Play this when you miss me.",
-  "theme": 0,                   // index into THEMES
-  "songs": [ /* Track[] */ ],
-  "publishedId": "…",           // present once shared
-  "publishedAt": "2026-07-25T…"
-}
-```
-
-Version the schema now. Migrating a saved tape someone spent an hour on is not
-a place to improvise later.
-
-### Entry — a song *plus why it's there*
-
-A tape is an ordered list of entries, not of tracks. The entry carries the human
-part; the track is the attachment.
-
-```jsonc
-{
-  "id": "uuid",
-  "authorId": "p1",          // which participant added it
-  "addedAt": "2026-07-25T…", // when
-  "side": "A",               // derived in gift mode, authored in duet mode
-  "position": 0,
-  "reason": "the one that was playing when you called",   // THE product
-  "voiceNoteId": null,       // later — the sender's own audio, which we may host
-  "track": { /* Track */ }
-}
-```
-
-`authorId` and `addedAt` are the only two fields that make duet mode (one song a
-day, two-sided — see `GROWTH.md`) a *view change* rather than a migration. Gift
-mode sets one author and ignores `addedAt`. Ship them from day one even though
-gift mode barely uses them.
-
-### Track
-
-```jsonc
-{
-  "id": "uuid",
-  "title": "Fade Into You",     // always user-editable, even when matched
-  "artist": "Mazzy Star",
-  "album": "So Tonight That I Might See",
-  "year": 1993,
-  "durationMs": 294000,         // null ⇒ budget assumes 3:30
-  "isrc": "USEE19300012",       // join key for Art Tracks; often absent
-  "provider": "deezer",         // deezer | itunes | spotify | catalog | manual
-  "providerId": "3135556",
-  "artworkUrl": "https://…",    // hotlinked; NEVER baked into an export
-  "previewUrl": "https://…",    // provider CDN; fetched at play, never cached
-  "resolved": {                 // filled asynchronously after publish
-    "youtubeVideoId": "…",      // an Art Track — see MUSIC.md
-    "spotifyId": "…",
-    "appleId": "…",
-    "universalUrl": "https://song.link/…"
-  }
-}
-```
-
-> ⚠ `addTrack()` in `index.html` currently drops `isrc` and `artworkUrl`. ISRC is
-> the join key for Art Track resolution — persisting it is a prerequisite for
-> playback, not a nice-to-have.
-
-### Published tape (server)
-
-```jsonc
-{
-  "id": "8f3a…",                // ≥128-bit, unguessable, url-safe
-  "mode": "gift",               // gift | duet
-  "title": "…", "to": "…", "from": "…", "note": "…", "theme": 0,
-  "participants": [ { "id": "p1", "name": "…", "role": "a" } ],
-  "entries": [ /* Entry[] */ ],
-  "createdAt": "…",
-  "publishedAt": "…",
-  "revokedAt": null,
-  "ownerToken": "…"             // returned once to the sender; enables edit/revoke
-                                // without an account
-}
-```
-
-### Resolution cache (server, global, permanent)
-
-```jsonc
-{
-  "key": "USEE19300012",        // isrc, else normalize("title|artist")
-  "youtubeVideoId": "…",        // Art Track
-  "spotifyId": "…", "appleId": "…", "universalUrl": "…",
-  "source": "odesli",           // odesli | youtube-search
-  "resolvedAt": "…"
-}
-```
-
-**This row is shared by every user and never expires.** It is the single most
-important scaling decision in the system — see the resolver below.
-
-`ownerToken` is how "edit after publish" works before accounts exist — the sender
-keeps a capability, not an identity.
-
-## API surface
-
-Design these to be callable by something that isn't our UI — the MCP server in
-PRD Epic E reuses them directly.
-
-| Endpoint | Method | Purpose | Cache | Notes |
-|---|---|---|---|---|
-| `/api/search?q=` | GET | track search | 24h edge | Deezer → iTunes fallthrough; returns normalised `Track[]` with a `provider` field so the UI can render the right badge |
-| `/api/resolve` | POST | Art Track IDs + platform links | **permanent** | batch; asynchronous, never blocks the UI or publishing |
-| `/api/tapes` | POST | publish | — | idempotency key required; returns `{id, ownerToken}` |
-| `/api/tapes/:id` | GET | fetch a tape | 60s | 404 if revoked |
-| `/api/tapes/:id` | PATCH/DELETE | edit/revoke | — | requires `ownerToken` |
-| `/t/:id` | GET | SSR tape page | 60s | OG/Twitter tags, `noindex`, no third-party scripts |
-
-**Normalisation matters.** Deezer and iTunes disagree on field names, artwork
-sizes, and duration units. Normalise at the edge so the client never branches on
-provider except to pick the attribution badge.
-
-## Search behaviour
+**Frontend stays vanilla.** No framework. The canvas cover renderer, the DOM
+cassette and the motion layer are all done and verified; a rewrite buys nothing.
+Add a bundler only when module count justifies it.
 
 ```
-keystroke → debounce 300ms → abort in-flight → /api/search
-                                                  │
-                    ┌─────────────────────────────┤
-                    ▼                             ▼
-              cache hit (24h)              Deezer  ──429/5xx──▶ iTunes
-                    │                        │                    │
-                    └────────────┬───────────┴────────────────────┘
-                                 ▼                         all fail
-                          normalised Track[]                  │
-                                                              ▼
-                                             inline note + manual entry stays open
+/                     index.html   — create flow
+/t/:id                tape.html    — recipient page (SSR'd shell + OG tags)
+/me                   library.html — my tapes (auth required)
+/api/*                Pages Functions
 ```
 
-Rules:
-- Abort superseded requests — out-of-order responses that repaint stale results
-  are the classic search bug.
-- **Manual entry is always visible**, not revealed on zero results. It's the
-  canonical path (PRD J7).
-- Never block the UI on `/api/resolve`; links fill in behind the tape.
+---
 
-## Resolution — turning a song into something playable
+## 2. Data model (D1)
 
-Runs server-side after publish, off the request path. Full sequence and the
-quota arithmetic are in `JOURNEY.md` §4; the decisions that constrain the
-implementation:
+```sql
+CREATE TABLE users (
+  id            TEXT PRIMARY KEY,            -- usr_<ulid>
+  email         TEXT UNIQUE NOT NULL,
+  created_at    INTEGER NOT NULL,
+  deleted_at    INTEGER
+);
 
-1. **Cache first, always.** Key on ISRC, degrading to `normalize("title|artist")`
-   because Deezer `/search` and the iTunes Search API don't return ISRC (Deezer's
-   `/track/{id}` does; Spotify search returns `external_ids.isrc`).
-2. **Odesli before YouTube.** One free call returns youtube / youtubeMusic /
-   spotify / apple links at **zero YouTube quota**. ~10 req/min, so queue it.
-3. **YouTube Data API only on a miss.** `search.list` costs **100 units of
-   10,000/day** — ~100 searches per day across *all* users, no paid tier. Filter
-   to `channelTitle` ending `" - Topic"` to get Art Tracks rather than fan videos.
-4. **The cache is global and permanent.** Tapes skew to well-known songs, so it
-   saturates fast. A per-session cache passes testing and fails in week one.
-5. **Unresolved is not an error.** The row renders; play deep-links to a search.
+CREATE TABLE tapes (
+  id            TEXT PRIMARY KEY,            -- 16 url-safe chars, >=128 bits entropy
+  owner_id      TEXT REFERENCES users(id),   -- NULL while anonymous
+  owner_token   TEXT NOT NULL,               -- capability for anonymous edit/revoke
+  mode          TEXT NOT NULL DEFAULT 'gift',-- gift | duet
+  title         TEXT NOT NULL,
+  to_name       TEXT,
+  from_name     TEXT,
+  note          TEXT,
+  theme         INTEGER NOT NULL DEFAULT 0,
+  created_at    INTEGER NOT NULL,
+  published_at  INTEGER,
+  revoked_at    INTEGER,
+  open_count    INTEGER NOT NULL DEFAULT 0,  -- count only. never contents.
+  play_count    INTEGER NOT NULL DEFAULT 0
+);
 
-## Playback
+CREATE TABLE entries (
+  id            TEXT PRIMARY KEY,
+  tape_id       TEXT NOT NULL REFERENCES tapes(id) ON DELETE CASCADE,
+  position      INTEGER NOT NULL,
+  side          TEXT NOT NULL,               -- A | B
+  author_id     TEXT,                        -- enables duet mode later
+  added_at      INTEGER NOT NULL,
+  reason        TEXT NOT NULL DEFAULT '',    -- THE product
+  voice_key     TEXT,                        -- R2 object key, sender's own audio
+  title         TEXT NOT NULL,
+  artist        TEXT NOT NULL DEFAULT '',
+  album         TEXT,
+  year          INTEGER,
+  duration_ms   INTEGER,
+  isrc          TEXT,                        -- join key for Art Tracks
+  provider      TEXT NOT NULL,               -- catalog|deezer|itunes|manual
+  provider_id   TEXT,
+  artwork_url   TEXT,                        -- hotlinked. NEVER baked into exports.
+  yt_video_id   TEXT,                        -- the Art Track. NULL = unresolved
+  resolved_at   INTEGER
+);
+CREATE INDEX idx_entries_tape ON entries(tape_id, position);
 
-`player.js` wraps the YouTube IFrame API. Three constraints are load-bearing and
-come from YouTube's developer policies, not taste:
+CREATE TABLE sessions (
+  token_hash    TEXT PRIMARY KEY,            -- sha256(token). never store the token.
+  user_id       TEXT NOT NULL REFERENCES users(id),
+  created_at    INTEGER NOT NULL,
+  expires_at    INTEGER NOT NULL
+);
 
-- Player viewport **≥200×200**, 16:9 recommended **≥480×270**
-- Controls fully visible; the player **not obscured**
-- **Do not override the platform's rendering** of the player, strip branding, or
-  block ads
+CREATE TABLE magic_links (
+  token_hash    TEXT PRIMARY KEY,
+  email         TEXT NOT NULL,
+  tape_id       TEXT,                        -- claim this tape on sign-in
+  expires_at    INTEGER NOT NULL,            -- 15 minutes
+  used_at       INTEGER
+);
+```
 
-The tempting "hide the video, wrap it in our own skin" build is the violation,
-and since YouTube would be our entire playback layer, losing API access ends the
-product. Instead the player goes **inside the cassette window** — an Art Track
-renders as static cover art, which is exactly what a tape window should show.
+### KV: the resolution cache
 
-## Rendering
+```
+resolve:isrc:USEE19300012        -> { ytVideoId, source, at }
+resolve:ta:fade into you|mazzy star -> { ytVideoId, source, at }
+```
 
-Unchanged and working. Key invariants for anyone touching it:
+**Global and permanent.** No TTL. This is the single most important scaling
+decision in the system — see §4.
 
-- `cover.js` composes; `themes.js` paints per era; `U.rr`/`U.fit`/`U.sideBadge`
-  are shared — don't re-roll them.
-- `drawCassette` is called at a **fixed rect**; backgrounds must avoid it and the
-  tracklist panel.
-- Bottom ~110px is reserved for note + signature.
-- Canvas `letterSpacing` adds a trailing gap; offset centred text by half.
-- Fonts must be loaded (`document.fonts.load`) before any canvas paint, or the
-  first render silently uses fallback glyphs.
-- **The exported PNG contains only our own drawing.** Album artwork lives in the
-  DOM, never on the export canvas. This is a rights boundary, not a style choice.
+---
 
-## Offline
+## 3. API
 
-Service worker, cache-first for the shell (`index.html`, `brand.css`, `themes.js`,
-`cover.js`, `fonts/*`). Creating, editing, theming, rendering and downloading all
-work with no network — none of it needs one today, and the SW just makes that
-durable. Publishing queues via Background Sync where available, otherwise retries
-on next load.
+All handlers are Web-standard `(request, env) => Response`. JSON in, JSON out.
+Auth via `Cookie: mx_session` (HttpOnly, Secure, SameSite=Lax).
 
-## Performance budget
+| Method | Route | Auth | Purpose |
+|---|---|---|---|
+| GET | `/api/search?q=&limit=` | — | Catalogue is client-side; this is the long tail: Deezer → iTunes, normalised |
+| POST | `/api/resolve` | — | `{ tracks:[{title,artist,isrc}] }` → `{ results:[{key,ytVideoId,source}] }` |
+| POST | `/api/tapes` | optional | Publish. Requires `Idempotency-Key`. → `{ id, ownerToken, url }` |
+| GET | `/api/tapes/:id` | — | Full tape + entries. 410 if revoked. |
+| PATCH | `/api/tapes/:id` | owner | Edit. Auth by session **or** `X-Owner-Token`. |
+| DELETE | `/api/tapes/:id` | owner | Revoke (soft) |
+| POST | `/api/tapes/:id/voice` | owner | Presigned R2 upload for a voice note |
+| POST | `/api/auth/request` | — | `{ email, tapeId? }` → sends magic link. Always 200 (no account enumeration). |
+| GET | `/api/auth/callback?token=` | — | Verify, create session, claim tape, redirect |
+| POST | `/api/auth/signout` | session | Delete session |
+| GET | `/api/me` | session | `{ user, tapes: { sent, received } }` |
+| DELETE | `/api/me` | session | Delete account + all tapes (GDPR) |
+| POST | `/api/events` | — | `{ type: "open"|"play", tapeId }` — counters only |
+
+**Rate limits** (KV, per IP): search 30/min · resolve 10/min · publish 10/hr ·
+auth request 5/hr per email.
+
+---
+
+## 4. Resolution — how a song becomes playable
+
+This is the critical path for the whole product. Runs server-side, asynchronously
+after publish, and again lazily on read for anything still unresolved.
+
+```
+for each track:
+
+ 1. KV CACHE          key = isrc || normalize("title|artist")
+    hit  → done. zero external calls.            ← the overwhelmingly common case
+    miss ↓
+
+ 2. ODESLI            api.song.link/v1-alpha.1/links?url=…|isrc=…
+    free, ~10 req/min, returns youtube + youtubeMusic links in ONE call
+    hit  → extract the 11-char video id → cache → done   ← ZERO YouTube quota
+    miss ↓
+
+ 3. YOUTUBE DATA API  search.list — 100 units of 10,000/day
+    q="{artist} {title}", type=video, videoCategoryId=10, maxResults=5
+    keep the first item whose snippet.channelTitle ends " - Topic"   ← Art Track
+    else fall back to the first result flagged as official audio
+    hit  → cache → done
+    miss ↓
+
+ 4. UNRESOLVED        yt_video_id stays NULL. The row still renders, it is
+                      skipped during playback, and it keeps an outbound link.
+```
+
+**The arithmetic that forces this shape.** `search.list` costs 100 units against
+10,000/day — about **100 searches per day across all users combined**, no paid
+tier, extensions by manual review. Unusable as a per-track lookup. Odesli absorbs
+most misses at zero YouTube cost, and because tapes skew hard to well-known
+songs, the permanent global cache saturates fast. A per-session or per-tape cache
+passes testing and dies at a few hundred users.
+
+**ISRC availability is uneven.** Deezer `/search` and iTunes Search don't return
+it (Deezer `/track/{id}` does; Spotify search returns `external_ids.isrc`). The
+cache key degrades to normalised `title|artist`.
+
+---
+
+## 5. Playback — the embedded YT Music player
+
+> **Requirement B1–B7. This is what makes it an app rather than a picture.**
+
+### Why Art Tracks are "YT Music"
+
+There is **no public YouTube Music API and `music.youtube.com` is not
+embeddable**. But an **Art Track** is *"an automatically generated YouTube
+version of a sound recording"* — the official, label-delivered audio, generated
+from the label's DDEX feed, keyed by ISRC, living on an `Artist – Topic`
+channel, rendering as **static album art rather than video**.
+
+An Art Track is an ordinary `youtube.com` video id. So: resolve to the Art Track,
+embed the standard IFrame player, and what plays is the record — not a fan
+video. Full length, free, licensed, for everyone, no login.
+
+### Compliance — non-negotiable, and it shapes the UI
+
+| Rule | Consequence here |
+|---|---|
+| Player viewport **≥200×200**, 16:9 recommended **≥480×270** | It lives in the cassette window, which is sized to satisfy this at every breakpoint |
+| Controls fully visible, player not obscured | No overlay, no scrim, no decorative frame on top |
+| **Do not override the platform's rendering** | No custom skin, no hiding the video to make an audio-only player |
+| Don't strip branding or block ads | Ship it as-is |
+
+The tempting "hide it and build our own transport" is the violation, and since
+YouTube is the entire playback layer, losing API access ends the product. The
+happy accident: an Art Track *is* album art, so a visible player in the tape
+window is also the right design.
+
+### Implementation
+
+```js
+// player.js — one player, owned by the tape page
+YT.Player(mount, {
+  width: "100%", height: "100%",          // container enforces >=480x270
+  playerVars: {
+    playsinline: 1,   // iOS: play inline, not fullscreen takeover
+    rel: 0,           // no unrelated recommendations after a track
+    modestbranding: 1,
+  },
+  events: { onReady, onStateChange, onError },
+});
+```
+
+**Sequencing.** Do **not** use `cuePlaylist` with the full tape — a tape mixes
+resolved and unresolved tracks and the two indexes drift. Instead keep our own
+queue of resolved entries and call `loadVideoById(id)` on each advance. Our
+index is the source of truth; that index drives which reason is on screen (B5).
+
+**Autoplay.** Browsers block audible autoplay without a gesture. The first tap
+on the play button *is* the gesture; every subsequent `loadVideoById` inherits
+it. Never attempt to autoplay on page load — it fails silently and looks broken.
+
+**Errors.** `onError` codes 2/5/100/101/150 → mark the entry unavailable, log a
+counter, **advance to the next resolved track**. One dead video must never stall
+a tape.
+
+**Flip.** Side B continues the same queue. Reaching the end of side A auto-flips
+the cassette and keeps playing.
+
+**Voice notes (B8).** A separate `<audio>` element playing our own R2 object.
+Pause the YouTube player, play the voice, resume. Only ever the sender's own
+recording — never third-party audio.
+
+### Fallback ladder
+
+```
+Art Track          → plays in the window
+official audio     → plays in the window
+unresolved         → skipped in the queue, keeps a "listen" link out
+embed blocked      → detected via onReady timeout; whole page falls back to
+                     the tracklist + outbound links, with a plain explanation
+```
+
+---
+
+## 6. Auth
+
+**Magic link only.** No passwords, no OAuth at launch. One field.
+
+```
+POST /api/auth/request { email, tapeId? }
+  → token = 32 random bytes, base64url
+  → store sha256(token), 15-min TTL, single use
+  → email the link. Response is ALWAYS 200 — never reveal whether the email exists.
+
+GET /api/auth/callback?token=…
+  → look up sha256(token); reject if used or expired; mark used
+  → upsert user; create session (sha256 stored, 30-day expiry)
+  → if tapeId present and the tape is unclaimed, set owner_id
+  → Set-Cookie: mx_session=…; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000
+  → 302 to /me
+```
+
+**Anonymous ownership.** Publishing returns an `ownerToken` — a bearer
+capability stored in localStorage. It authorises edit and revoke with no
+account, and is exchanged for real ownership when the tape is claimed. This is
+what lets the entire journey work signed out.
+
+**Security.** Tokens are never logged or stored in plaintext. Sessions are
+rotated on sign-in. `DELETE /api/me` hard-deletes tapes, entries and R2 objects.
+
+---
+
+## 7. Sharing and OG previews
+
+Fragment-encoded links (`tape-codec.js`) got the prototype working with no
+backend, but a fragment is invisible to crawlers, so shared links preview as a
+blank card. Since the preview *is* the first impression, server-backed short
+links are P0.
+
+```
+POST /api/tapes           → { id: "k3f9x2q1", url: "https://…/t/k3f9x2q1" }
+GET  /t/:id               → SSR shell with:
+       <meta property="og:image" content="https://…/api/og/k3f9x2q1.png">
+       <meta property="og:title" content="A mixtape for Aanya">
+       <meta name="robots" content="noindex">
+GET  /api/og/:id.png      → 1200×630 rendered from the same theme painters,
+                            cached in KV forever (covers are immutable)
+```
+
+`tape-codec.js` stays for offline/no-backend sharing and as the fallback when
+publishing fails.
+
+---
+
+## 8. Privacy
+
+- **No analytics on tape contents.** Counters and timings only. Titles, names,
+  reasons and voice notes are never sent to any analytics surface.
+- Tape ids ≥128 bits; `noindex`; revocable.
+- Voice notes are private R2 objects served via short-lived signed URLs.
+- `DELETE /api/me` removes everything, including R2 objects.
+- No third-party scripts on `/t/:id` other than the YouTube IFrame API.
+
+---
+
+## 9. Performance budget
 
 | Thing | Budget |
 |---|---|
-| JS + CSS (excl. fonts) | ≤250KB |
-| Fonts | ~220KB, self-hosted, `swap` |
+| JS + CSS, excluding fonts | ≤250KB |
+| Fonts | ~220KB self-hosted woff2, `font-display: swap` |
+| **Open tape → first note** | **<3s** |
+| Tape page TTFB | ≤300ms (edge) |
 | Cover render | ≤400ms |
-| Search P95 cached / uncached | 200ms / 900ms |
-| Tape page TTFB | ≤300ms (edge-cached) |
+| Search P95 | 200ms cached / 900ms cold |
 
-Fonts are the largest asset. Subset to latin at build time if the budget tightens.
+The YouTube IFrame API script is ~90KB and loads **lazily on first play intent**,
+not on page load, so it stays outside first paint.
 
-## Security & privacy
+---
 
-- Recipient OAuth (Spotify/Apple) runs in the recipient's browser; **tokens are
-  never sent to or stored on our server.**
-- Tape ids are ≥128-bit — enumeration must be infeasible.
-- Tape pages are `noindex` and carry no third-party scripts.
-- CSP: `default-src 'self'`; allow provider image + audio CDNs explicitly; no
-  inline script once the code is split out of `index.html`.
-- Analytics are content-blind — counts and timings, never titles, names or notes.
-- `ownerToken` is a bearer capability: single-use display, never logged.
+## 10. Testing
 
-## Testing
+Per `.claude/skills/build-loop`, verification is behavioural — drive the app,
+don't just unit-test.
 
-Per `build-loop`, verification is behavioural, not unit-first:
+- **function** — every journey in `JOURNEY.md`, including failure paths
+- **playback** — resolved queue advances; unresolved skipped; `onError` advances;
+  reason tracks the now-playing index; flip continues the queue
+- **rights** — network log proves no audio from our origin; player ≥480×270 and
+  unobscured; no third-party artwork in the exported PNG
+- **a11y** — keyboard transport, labelled controls, `prefers-reduced-motion`
+- **unit** — pure logic only: side splitting, time budget, schema migration,
+  provider normalisation, resolver ordering, codec round-trip
 
-- **Function:** Playwright drives the real flows and the failure paths (offline,
-  429, empty results, duplicate publish, 12-song cap, reload-resume).
-- **Design:** renders every screen and every cover theme; critiques images.
-- **Rights:** network log proves no audio from our origin and no third-party art
-  in the export.
-- **A11y/perf:** axe, keyboard path, contrast, Lighthouse budget.
-
-Unit tests earn their place for pure logic only — side-splitting, time budget,
-schema migration, provider normalisation. Everything else is verified by
-driving the app.
-
-## Build phases
-
-| Phase | Work | New infra |
-|---|---|---|
-| 1 | `/api/search`, search UI, manual entry, fallback chain | edge fn + cache |
-| 2 | `/api/tapes`, `/t/:id` SSR, share link | KV/Postgres |
-| 3 | previews + badges, `/api/resolve`, Spotify export | Odesli key, Spotify app |
-| 4 | accounts (magic link), my-tapes, edit-after-publish | auth, mail |
-| 5 | `mixtape-mcp`, CC-catalogue mode | MCP host, Jamendo key |
-
-Phase 1 and 2 are the product. Everything after is amplification — and per the
-PRD, phase 3 onward is gated on the phase-2 share rate clearing 25%.
+**Sandbox limitation:** this environment's egress proxy 403s `youtube.com`,
+`api.deezer.com`, `itunes.apple.com` and `api.song.link`. Playback and live
+resolution **cannot be verified here** — build against fixtures that mirror the
+real response shapes (the `fromDeezer`/`fromItunes`/`fromOdesli` normalisers
+already exist for exactly this) and verify live on a deployed preview.

@@ -34,12 +34,16 @@ python3 -m http.server 8000
 | **Detroit '68** | Motown / Tamla | cream, mustard + maroon, vinyl rings, geometric caps |
 | **Camden '79** | UK punk / 2-Tone | checkerboard, photocopy grain, ransom-strip type |
 
+> **Status:** working prototype of two screens. It cannot play music yet —
+> see [`docs/BUILD-PLAN.md`](docs/BUILD-PLAN.md) slice 1.
+
 ## Planning docs
 
-- [`docs/PRD.md`](docs/PRD.md) — product requirements: problem, hypothesis,
-  personas, jobs, user journeys, requirements, edge cases, metrics, rollout
-- [`docs/JOURNEY.md`](docs/JOURNEY.md) — the sender and recipient journeys step
-  by step, with the technical sequence behind each one
+- [`docs/BUILD-PLAN.md`](docs/BUILD-PLAN.md) — **start here** — the remaining slices in order, with acceptance criteria
+- [`docs/PRD.md`](docs/PRD.md) — the complete product scope: playback, accounts,
+  library, the loop, with personas, jobs, edge cases and metrics
+- [`docs/JOURNEY.md`](docs/JOURNEY.md) — every flow end to end, J1 first visit
+  through J11 library, with failure paths and a build-state map
 - [`docs/TECH-SPEC.md`](docs/TECH-SPEC.md) — architecture, data model, API
   surface, resolution, playback, offline, performance and security
 - [`docs/MUSIC.md`](docs/MUSIC.md) — how songs get found, previewed and played,
