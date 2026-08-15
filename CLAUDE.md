@@ -137,12 +137,17 @@ Built: create flow, five era covers, catalogue search (170 songs) + mood browse,
 reason per track, share-by-URL-fragment, recipient page, the A/B flip, motion
 language. All verified — `npm run verify` is 40 checks green.
 
-**Not built, and the reason it isn't an app yet:**
+**Playback (slice 1) is built** — `player.js` owns a queue of resolved entries
+and plays Art Tracks in the cassette window; `functions/api/resolve.js` is the
+cache → Odesli → YouTube chain. Verified 17/17 against a stubbed IFrame API.
+**Not yet proven against real YouTube** — `youtube.com` is 403'd here, so the
+one unverified claim is that YouTube's own player behaves as documented.
 
-- **Playback.** No track resolves to a video id, so nothing plays. This is
-  slice 1 and everything else is secondary to it.
+**Not built:**
+
 - No backend — no short links, no real OG preview image, no persistence
-  beyond `localStorage`
+  beyond `localStorage`. Resolution has nowhere to be stored, so tapes arrive
+  with `yt` ids only if they were baked into the link.
 - No live search beyond the built-in catalogue
 - No accounts, no library, no voice notes
 

@@ -156,6 +156,49 @@
   letter-spacing: .18em; text-transform: uppercase; color: rgba(255,255,255,.45);
 }
 
+/* ---------- transport ---------- */
+.transport {
+  display: flex; align-items: center; justify-content: center;
+  gap: 10px; margin-top: 20px; flex-wrap: wrap;
+}
+
+.play-btn {
+  appearance: none; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 10px;
+  font-family: var(--sans); font-size: 13px; font-weight: 700;
+  letter-spacing: .22em; text-indent: .22em; text-transform: uppercase;
+  color: #fff; background: var(--ink); border: 1.6px solid var(--ink);
+  border-radius: 999px; padding: 14px 28px;
+  transition: background .15s ease, transform .1s ease;
+}
+.play-btn:hover { background: #000; }
+.play-btn:active { transform: scale(.97); }
+.play-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+.play-btn .glyph { font-size: 15px; text-indent: 0; letter-spacing: 0; }
+
+.step-btn {
+  appearance: none; cursor: pointer;
+  background: transparent; border: 1.4px solid var(--hairline);
+  border-radius: 999px; width: 42px; height: 42px;
+  color: var(--muted); font-size: 15px;
+  transition: color .15s ease, border-color .15s ease;
+}
+.step-btn:hover:not(:disabled) { color: var(--ink); border-color: var(--ink); }
+.step-btn:disabled { opacity: .35; cursor: default; }
+.step-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+.transport-note {
+  flex-basis: 100%; text-align: center; margin: 4px 0 0;
+  font-family: var(--mono); font-size: 12px; color: var(--muted);
+}
+
+/* the row currently playing, and its reason */
+.tracks li.row.is-playing { background: rgba(43,63,212,.07); }
+.tracks li.row.is-playing .t { color: var(--blue); }
+.tracks li.row.is-playing .no::before { content: "▸ "; color: var(--blue); }
+.tracks li.row.is-unavailable { opacity: .55; }
+.tracks li.row.is-unavailable .t { text-decoration: line-through; }
+
 .flip-btn {
   appearance: none; border: none; background: none; cursor: pointer;
   margin-top: 20px;
@@ -274,6 +317,16 @@
         </div>
       </div>
 
+      <div class="transport" id="transport">
+        <button class="step-btn" id="btn-prev" title="Previous" aria-label="Previous track" disabled>‹</button>
+        <button class="play-btn" id="btn-play">
+          <span class="glyph" id="play-glyph" aria-hidden="true">▶</span>
+          <span id="play-label">Play the tape</span>
+        </button>
+        <button class="step-btn" id="btn-next" title="Next" aria-label="Next track" disabled>›</button>
+        <p class="transport-note" id="transport-note" role="status"></p>
+      </div>
+
       <button class="flip-btn" id="btn-flip" hidden aria-pressed="false">
         flip the tape ↻
       </button>
@@ -290,7 +343,8 @@
       <p class="sig" id="tape-sig"></p>
 
       <div class="make-back">
-        <a class="pill" href="index.html">Make one back</a>
+        <!-- ghost: play is the one filled pill on this page -->
+        <a class="pill pill--ghost" href="index.html">Make one back</a>
       </div>
     </main>
   </div>
@@ -359,7 +413,7 @@ import * as M from "./motion.js";
       }
 
       const li = document.createElement("li");
-      li.className = "row";
+      li.className = song.unavailable ? "row is-unavailable" : "row";
       li.id = `row-${i}`;
 
       const no = document.createElement("span");
@@ -396,8 +450,11 @@ import * as M from "./motion.js";
     $("#list-side").textContent = side === "B" ? "B side" : "A side";
   }
 
+  let nowPlaying = -1;
+
   function markPlaying(i) {
     document.querySelectorAll(".tracks li.row").forEach((el) => el.classList.remove("is-playing"));
+    if (i < 0) return;
     const el = document.getElementById(`row-${i}`);
     if (el) {
       el.classList.add("is-playing");
@@ -438,42 +495,98 @@ import * as M from "./motion.js";
     renderTracks(tape, side);
     $("#app").hidden = false;
 
-    // The flip only exists if there is a B side to turn to.
     const aCount = Math.ceil(tape.songs.length / 2);
     const hasB = tape.songs.length > aCount;
     const flipBtn = $("#btn-flip");
-    if (hasB) {
-      flipBtn.hidden = false;
-      let flipping = false;
-      flipBtn.addEventListener("click", async () => {
-        if (flipping) return;
-        flipping = true;
-        side = side === "A" ? "B" : "A";
-        flipBtn.setAttribute("aria-pressed", String(side === "B"));
-        flipBtn.textContent = side === "B" ? "back to side A ↻" : "flip the tape ↻";
+    let flipping = false;
 
-        const listCard = document.querySelector(".list-card");
-        await Promise.all([
-          M.flip($("#cassette"), side === "B"),
-          M.crossFade(listCard, () => renderTracks(tape, side)),
-        ]);
-        flipping = false;
-      });
+    /* Turn the tape. Used by the button and by playback crossing into side B. */
+    async function setSide(next) {
+      if (flipping || side === next) return;
+      flipping = true;
+      side = next;
+      flipBtn.setAttribute("aria-pressed", String(side === "B"));
+      flipBtn.textContent = side === "B" ? "back to side A ↻" : "flip the tape ↻";
+      const listCard = document.querySelector(".list-card");
+      await Promise.all([
+        M.flip($("#cassette"), side === "B"),
+        M.crossFade(listCard, () => renderTracks(tape, side)),
+      ]);
+      flipping = false;
+      markPlaying(nowPlaying);
     }
 
-    // the page arriving: paper settling onto the desk
+    if (hasB) {
+      flipBtn.hidden = false;
+      flipBtn.addEventListener("click", () => setSide(side === "A" ? "B" : "A"));
+    }
+
     M.settleAll(document.querySelectorAll(".masthead, .sticker, .flip-btn:not([hidden]), .sig, .make-back"));
 
-    // Try the player. If YouTube isn't reachable the reels stay and every
-    // row still has its "listen" link — the page is never broken by this.
-    const idle = $("#idle-note");
-    const res = await window.Player.mount($("#window"), tape.songs);
-    if (res.ok) {
-      window.Player.onIndexChange(markPlaying);
+    /* ---------- playback ---------- */
+
+    const playBtn = $("#btn-play");
+    const playGlyph = $("#play-glyph");
+    const playLabel = $("#play-label");
+    const prevBtn = $("#btn-prev");
+    const nextBtn = $("#btn-next");
+    const tNote = $("#transport-note");
+
+    const { playable, total } = window.Player.init($("#window"), tape.songs, {
+      onIndex: async (entryIndex, entry) => {
+        nowPlaying = entryIndex;
+        // playback crossing into side B turns the tape with it
+        const wantSide = entryIndex < aCount ? "A" : "B";
+        if (wantSide !== side) await setSide(wantSide);
+        markPlaying(entryIndex);
+        prevBtn.disabled = false;
+        nextBtn.disabled = false;
+      },
+      onState: (playing) => {
+        playGlyph.textContent = playing ? "❚❚" : "▶";
+        playLabel.textContent = playing ? "Pause" : "Play the tape";
+      },
+      onUnavailable: (entry) => {
+        entry.unavailable = true;
+        renderTracks(tape, side);
+        markPlaying(nowPlaying);
+      },
+      onBlocked: () => {
+        $("#idle-note").textContent = "tap listen on any track";
+        tNote.textContent = "this network won't let the player load — every track still has a link";
+        playBtn.disabled = true;
+      },
+      onNeedsGesture: () => {
+        tNote.textContent = "tap play once more to start the sound";
+      },
+      onEnd: () => {
+        playGlyph.textContent = "▶";
+        playLabel.textContent = "Play from the start";
+        tNote.textContent = "that's the whole tape";
+      },
+    });
+
+    if (!playable) {
+      // nothing resolved yet — the tape is still complete, just not playable here
+      playBtn.disabled = true;
+      $("#idle-note").textContent = "tap listen on any track";
+      tNote.textContent = total
+        ? "these aren't matched to a recording yet — tap listen on any track"
+        : "";
     } else {
-      idle.textContent = res.reason === "nothing-resolved"
-        ? "tap listen on any track"
-        : "tap listen on any track";
+      if (playable < total) {
+        tNote.textContent = `${playable} of ${total} ready to play`;
+      }
+      playBtn.addEventListener("click", async () => {
+        if (window.Player.isPlaying()) return window.Player.pause();
+        tNote.textContent = "";
+        const res = await window.Player.play();
+        if (!res.ok && res.reason === "api-unavailable") {
+          tNote.textContent = "this network won't let the player load — every track still has a link";
+        }
+      });
+      prevBtn.addEventListener("click", () => window.Player.prev());
+      nextBtn.addEventListener("click", () => window.Player.next());
     }
   }
 
